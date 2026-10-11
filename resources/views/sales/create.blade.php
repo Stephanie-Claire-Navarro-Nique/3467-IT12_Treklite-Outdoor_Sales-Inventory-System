@@ -37,7 +37,7 @@
         <div class="col-lg-8">
             <div class="input-group mb-2">
                 <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                <input type="search" id="search" class="form-control" placeholder="Search product, brand, SKU, size or color...">
+                <input type="search" id="search" class="form-control" placeholder="Search model name, brand, size or color...">
             </div>
 
             <div class="cat-pills mb-3" id="cat-pills">

@@ -34,7 +34,7 @@
         <div class="alert alert-light border small py-2">
             <i class="bi bi-info-circle"></i>
             This page is for <strong>receiving deliveries</strong> and <strong>counting</strong> stock of items that already exist.
-            To add a <strong>new item</strong> (with its sizes, colors and opening stock), go to <a href="{{ route('products.create') }}">Products &rarr; Add Product</a>.
+            New items (with their sizes, colors and opening stock) are added with the <strong>Add Product</strong> button above.
         </div>
     @endif
 
@@ -47,7 +47,15 @@
     @if ($mode === 'brands')
         <div class="d-flex justify-content-between align-items-center mb-2">
             <h6 class="text-uppercase text-muted mb-0">Brands</h6>
-            <a href="{{ route('inventory.index', ['status' => 'low']) }}" class="small">Show low stock only</a>
+            <form method="GET" action="{{ route('inventory.index') }}" class="d-flex align-items-center gap-2">
+                <label for="brand-status" class="small text-muted mb-0">Status</label>
+                <select name="status" id="brand-status" class="form-select form-select-sm" style="width:auto" onchange="this.form.submit()">
+                    <option value="">All</option>
+                    <option value="ok">OK</option>
+                    <option value="low">Low stock</option>
+                    <option value="out">Out of stock</option>
+                </select>
+            </form>
         </div>
 
         <div class="row g-3">
@@ -73,7 +81,7 @@
                 <div class="col-12">
                     <div class="card shadow-sm"><div class="card-body text-center text-muted py-4">
                         No products yet.
-                        @if ($isOwner) <a href="{{ route('products.create') }}">Add your first product</a> to start tracking stock. @endif
+                        @if ($isOwner) Use <strong>Add Product</strong> above to start tracking stock. @endif
                     </div></div>
                 </div>
             @endforelse
@@ -100,7 +108,7 @@
                 <div class="row g-2 align-items-end">
                     <div class="col-lg-3 col-md-6">
                         <label class="form-label small mb-0">Search</label>
-                        <input type="search" name="q" value="{{ $q }}" class="form-control form-control-sm" placeholder="Product, SKU, size, color">
+                        <input type="search" name="q" value="{{ $q }}" class="form-control form-control-sm" placeholder="Model name, size, color">
                     </div>
                     <div class="col-lg-2 col-md-3 col-6">
                         <label class="form-label small mb-0">Category</label>
