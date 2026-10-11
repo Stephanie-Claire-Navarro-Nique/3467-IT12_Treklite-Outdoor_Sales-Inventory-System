@@ -142,14 +142,28 @@ class SaleController extends Controller
             'customer_contact'   => ['nullable', 'string', 'max:50'],
             'payment_method'     => ['required', 'in:cash,gcash,bank_transfer'],
             'amount_tendered'    => ['required', 'numeric', 'min:0'],
+            'payment_reference'  => ['required_unless:payment_method,cash', 'nullable', 'string', 'max:100'],
             'payment_proof'      => ['required_unless:payment_method,cash', 'nullable', 'image', 'max:4096'],
             'items'              => ['required', 'array', 'min:1'],
             'items.*.variant_id' => ['required', 'integer', 'exists:product_variants,id'],
             'items.*.quantity'   => ['required', 'integer', 'min:1'],
         ], [
             'amount_tendered.required'        => 'Enter the amount received from the customer.',
+            'payment_reference.required_unless' => 'Enter the reference number from the payment confirmation for GCash / Bank Transfer.',
             'payment_proof.required_unless'   => 'Take or upload a photo of the payment confirmation for GCash / Bank Transfer.',
         ]);
+
+        // Reference number is only for GCash / Bank Transfer. Cash sales store nothing (NULL), never an empty text.
+        $reference = $data['payment_method'] === 'cash' ? null : trim((string) ($data['payment_reference'] ?? ''));
+        $reference = $reference === '' ? null : $reference;
+
+        // The same reference number must not be used on two different sales.
+        if ($reference !== null) {
+            $usedRef = Sale::where('payment_reference', $reference)->first();
+            if ($usedRef) {
+                throw ValidationException::withMessages(['payment_reference' => ['This reference number was already used on invoice ' . $usedRef->invoice_number . '. Check the number on the payment confirmation.']]);
+            }
+        }
 
         // The same payment photo must not be used on two different sales.
         $proofHash = null;
@@ -161,7 +175,7 @@ class SaleController extends Controller
             }
         }
 
-        $sale = DB::transaction(function () use ($data, $request, $proofHash) {
+        $sale = DB::transaction(function () use ($data, $request, $proofHash, $reference) {
             // Merge duplicate variants, then lock them so two sales cannot take the same stock.
             $lines = collect($data['items'])->groupBy('variant_id')->map(fn ($g) => (int) $g->sum('quantity'));
 
@@ -213,6 +227,7 @@ class SaleController extends Controller
                         'customer_address'   => $data['customer_address'] ?? null,
                         'customer_contact'   => $data['customer_contact'] ?? null,
                         'payment_method'     => $data['payment_method'],
+                        'payment_reference'  => $reference,
                         'payment_proof_path' => $proof,
                         'payment_proof_hash' => $proofHash,
                         'amount_tendered'    => $tendered,

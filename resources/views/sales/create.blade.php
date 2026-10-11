@@ -95,7 +95,7 @@
                         <div class="small mb-1" id="amount-msg"></div>
                         <div class="small text-muted mb-2">Change: <strong id="change-display">₱0.00</strong></div>
 
-                        {{-- GCash / Bank Transfer: photo of the payment confirmation only (no reference number) --}}
+                        {{-- GCash / Bank Transfer: reference number + photo of the payment confirmation --}}
                         <div id="digital-box" class="d-none">
                             @if ($paymentQr)
                                 <div class="text-center mb-2">
@@ -103,9 +103,17 @@
                                     <div class="small text-muted">Customer scans this QR, then shows the payment confirmation.</div>
                                 </div>
                             @endif
+                            <label class="form-label small mb-0">Reference number <span class="text-danger">*</span></label>
+                            <input type="text" name="payment_reference" id="payment-reference" maxlength="100" autocomplete="off" class="form-control form-control-sm mb-1 @error('payment_reference') is-invalid @enderror" placeholder="Reference no. from the payment confirmation" value="{{ old('payment_reference') }}">
+                            @error('payment_reference')<div class="text-danger small mb-1">{{ $message }}</div>@enderror
+
                             <label class="form-label small mb-0">Photo of payment confirmation <span class="text-danger">*</span></label>
                             <input type="file" name="payment_proof" id="payment-proof" accept="image/*" capture="environment" class="form-control form-control-sm mb-1 @error('payment_proof') is-invalid @enderror">
                             @error('payment_proof')<div class="text-danger small mb-1">{{ $message }}</div>@enderror
+                            <button type="button" class="btn btn-sm btn-outline-secondary w-100 mb-1" id="scan-btn" disabled>
+                                <i class="bi bi-camera"></i> Read reference number from photo
+                            </button>
+                            <div class="small mb-2" id="scan-msg"></div>
                             <div class="small text-muted">Check the amount on the customer's phone before completing the sale. The photo is required.</div>
                         </div>
                     </div>
@@ -427,6 +435,7 @@
             function togglePayment() {
                 $('digital-box').classList.toggle('d-none', isCash());
                 $('payment-proof').required = !isCash();
+                $('payment-reference').required = !isCash();
                 refreshSubmit();
             }
 
@@ -437,7 +446,7 @@
             }
 
             function refreshSubmit() {
-                const hasProof = isCash() || $('payment-proof').files.length > 0;
+                const hasProof = isCash() || ($('payment-proof').files.length > 0 && $('payment-reference').value.trim() !== '');
                 $('submit-btn').disabled = !(cart.length > 0 && amountOk() && hasProof);
             }
 
@@ -462,13 +471,170 @@
             $('payment-method').addEventListener('change', togglePayment);
             $('tendered').addEventListener('input', updateChange);
             $('payment-proof').addEventListener('change', refreshSubmit);
+            $('payment-reference').addEventListener('input', refreshSubmit);
             $('exact-btn').addEventListener('click', () => { $('tendered').value = cartTotal().toFixed(2); updateChange(); });
+
+            /* ---------- read the reference number from the photo (a SUGGESTION - the cashier can always edit it) ---------- */
+            /* The photo is read inside this browser. It is not sent to any other service. */
+            /* Finds the most likely payment reference number in text read from a payment screenshot.
+               It only SUGGESTS - the cashier always checks it against the photo. */
+            function extractReference(text) {
+                const lines = String(text || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+                // OCR often reads 0 as O and 1 as I/l inside numbers; fix that only when the value is mostly digits.
+                function tidy(v) {
+                    v = v.trim().replace(/[\s\-]+$/, '');
+                    const digits = (v.match(/\d/g) || []).length;
+                    if (digits >= 6 && digits / v.replace(/[\s\-]/g, '').length >= 0.7) {
+                        v = v.replace(/[Oo]/g, '0').replace(/[Il|]/g, '1');
+                    }
+                    return v;
+                }
+
+                // Inside number-like pieces, OCR reads 0 as O and 1 as I / l / | - repair those (words like "Oct" are left alone).
+                function repair(s) {
+                    return s.replace(/[0-9OoIl|]{2,}/g, tok => /\d/.test(tok) ? tok.replace(/[Oo]/g, '0').replace(/[Il|]/g, '1') : tok);
+                }
+
+                // digits grouped like "8012 345 678901" or "8012-345-678901"
+                function digitGroups(s) {
+                    s = repair(s);
+                    const m = s.match(/\d{2,}(?:[ \-]\d{2,}){0,4}/g) || [];
+                    return m.filter(x => x.replace(/\D/g, '').length >= 6)
+                            .sort((a, b) => b.replace(/\D/g, '').length - a.replace(/\D/g, '').length)[0] || null;
+                }
+
+                // letters + digits like "A1B2C3D4E5" (some banks / Maya)
+                function codeToken(s) {
+                    const m = s.match(/\b[A-Za-z0-9]{8,30}\b/g) || [];
+                    return m.find(x => /\d/.test(x) && /[A-Za-z]/.test(x)) || null;
+                }
+
+                const label = /(?:ref(?:erence)?\.?\s*(?:no\.?|number|num\.?|id|code|#)?|trace\s*(?:no\.?|number)?|transaction\s*(?:no\.?|number|id|code)?|txn\s*(?:no\.?|id)?|confirmation\s*(?:no\.?|number|code)?)\s*[:#.\-]?\s*/i;
+
+                for (let i = 0; i < lines.length; i++) {
+                    const m = lines[i].match(label);
+                    if (!m) continue;
+                    let rest = lines[i].slice(m.index + m[0].length);
+                    if (!rest.trim() && lines[i + 1]) rest = lines[i + 1];          // value is on the next line
+                    const found = digitGroups(rest) || codeToken(rest);
+                    if (found) return tidy(found);
+                }
+
+                // No label found: take the longest run of digits (10+ digits) anywhere in the text.
+                const any = digitGroups(lines.join('  '));
+                if (any && any.replace(/\D/g, '').length >= 10) return tidy(any);
+                return '';
+            }
+
+            const TESSERACT_URL = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+            let tesseractLoading = null;
+
+            /* The reader is only downloaded the first time someone presses the button. */
+            function loadTesseract() {
+                if (window.Tesseract) return Promise.resolve();
+                if (!tesseractLoading) {
+                    tesseractLoading = new Promise((resolve, reject) => {
+                        const tag = document.createElement('script');
+                        tag.src = TESSERACT_URL;
+                        tag.onload = resolve;
+                        tag.onerror = () => { tesseractLoading = null; reject(new Error('load')); };
+                        document.head.appendChild(tag);
+                    });
+                }
+                return tesseractLoading;
+            }
+
+            /* Big phone photos are shrunk first so reading is faster. */
+            function photoToCanvas(file) {
+                return new Promise((resolve, reject) => {
+                    const url = URL.createObjectURL(file);
+                    const img = new Image();
+                    img.onload = () => {
+                        const k = Math.min(1, 1800 / Math.max(img.width, img.height));
+                        const c = document.createElement('canvas');
+                        c.width = Math.round(img.width * k);
+                        c.height = Math.round(img.height * k);
+                        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+                        URL.revokeObjectURL(url);
+                        resolve(c);
+                    };
+                    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image')); };
+                    img.src = url;
+                });
+            }
+
+            function scanMessage(kind, text, value) {
+                const box = $('scan-msg');
+                box.className = 'small mb-2 ' + (kind === 'error' ? 'text-danger' : (kind === 'ok' ? 'text-success' : 'text-muted'));
+                box.textContent = text;                       // textContent on purpose: text read from a photo is never treated as HTML
+                if (value) {
+                    const strong = document.createElement('strong');
+                    strong.textContent = ' ' + value + ' ';
+                    box.appendChild(strong);
+                    const use = document.createElement('button');
+                    use.type = 'button';
+                    use.className = 'btn btn-link btn-sm p-0 align-baseline';
+                    use.textContent = 'Use this';
+                    use.addEventListener('click', () => {
+                        $('payment-reference').value = value;
+                        refreshSubmit();
+                        scanMessage('ok', 'Reference number filled in. Check it against the photo before completing the sale.');
+                    });
+                    box.appendChild(use);
+                }
+            }
+
+            let scanning = false;
+            async function scanPhoto() {
+                const file = $('payment-proof').files[0];
+                if (!file || scanning) return;
+                scanning = true;
+                $('scan-btn').disabled = true;
+                scanMessage('info', 'Reading the photo... the first time it can take a little while.');
+                try {
+                    await loadTesseract();
+                    const canvas = await photoToCanvas(file);
+                    const result = await window.Tesseract.recognize(canvas, 'eng');
+                    const found = extractReference(result.data.text);
+                    const field = $('payment-reference');
+                    const typed = field.value.trim();
+
+                    if (!found) {
+                        scanMessage('error', "Couldn't find a reference number in the photo. Please type it from the confirmation screen.");
+                    } else if (typed === '') {
+                        field.value = found;
+                        refreshSubmit();
+                        scanMessage('ok', 'Reference number filled in. Check it against the photo before completing the sale.');
+                    } else if (typed.replace(/[\s-]/g, '') === found.replace(/[\s-]/g, '')) {
+                        scanMessage('ok', 'The number you typed matches the photo.');
+                    } else {
+                        scanMessage('info', 'The photo seems to say:', found);
+                    }
+                } catch (err) {
+                    scanMessage('error', "Couldn't read the photo (the reader may not have loaded - check the internet). Please type the reference number.");
+                } finally {
+                    scanning = false;
+                    $('scan-btn').disabled = $('payment-proof').files.length === 0;
+                }
+            }
+
+            $('scan-btn').addEventListener('click', scanPhoto);
+            $('payment-proof').addEventListener('change', () => {
+                $('scan-btn').disabled = $('payment-proof').files.length === 0;
+                $('scan-msg').textContent = '';
+            });
 
             /* ---------- submit ---------- */
             $('sale-form').addEventListener('submit', e => {
                 if (!cart.length || !amountOk()) {
                     e.preventDefault();
                     warn(cart.length ? 'The amount received is less than the total.' : '');
+                    return;
+                }
+                if (!isCash() && $('payment-reference').value.trim() === '') {
+                    e.preventDefault();
+                    warn('Enter the reference number from the payment confirmation.');
                     return;
                 }
                 if (!isCash() && $('payment-proof').files.length === 0) {
