@@ -125,9 +125,10 @@
 
         /* --- Desktop: user can fold the sidebar away (remembered in this browser) --- */
         @media (min-width: 992px) {
-            /* Sidebar open  -> the button is inside the sidebar header.
-               Sidebar folded -> the button moves out to the top-left of the page. */
-            html:not(.sidebar-collapsed) .topbar .sidebar-toggle {
+            /* Sidebar open  -> no top bar at all (the toggle is inside the sidebar header and
+                                 each page already shows its own heading).
+               Sidebar folded -> the top bar appears with the toggle at the top-left. */
+            html:not(.sidebar-collapsed) .topbar {
                 display: none;
             }
 
@@ -257,7 +258,7 @@
         <button class="btn btn-sm btn-outline-secondary sidebar-toggle" id="sidebar-toggle" type="button" data-sidebar-toggle title="Show menu" aria-label="Show menu">
             <i class="bi bi-layout-sidebar"></i>
         </button>
-        <span class="fw-semibold">@yield('title', 'Treklite Outdoor')</span>
+        <span class="fw-semibold">Treklite Outdoor</span>
     </div>
 
     <div class="container-fluid py-4 px-4">
