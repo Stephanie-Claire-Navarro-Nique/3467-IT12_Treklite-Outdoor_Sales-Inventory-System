@@ -3,12 +3,10 @@
 namespace Database\Seeders;
 
 use App\Models\Product;
-use App\Models\ProductVariant;
 use App\Models\StockMovement;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 /**
  * Treklite's real product list, each with its starting stock.
@@ -60,7 +58,6 @@ class TrekliteProductSeeder extends Seeder
                 ]);
 
                 $variant = $product->variants()->create([
-                    'sku'                 => $this->makeSku($product),
                     'size'                => null,
                     'color'               => null,
                     'price'               => null,
@@ -86,15 +83,5 @@ class TrekliteProductSeeder extends Seeder
 
         $skipped = count($products) - $added;
         $this->command?->info($added . ' product(s) added' . ($skipped ? ", {$skipped} already existed and were skipped." : '.'));
-    }
-
-    /** Same internal item code the Products page makes, e.g. TL-0007-K3QZ. */
-    private function makeSku(Product $product): string
-    {
-        do {
-            $sku = sprintf('TL-%04d-%s', $product->id, Str::upper(Str::random(4)));
-        } while (ProductVariant::where('sku', $sku)->exists());
-
-        return $sku;
     }
 }

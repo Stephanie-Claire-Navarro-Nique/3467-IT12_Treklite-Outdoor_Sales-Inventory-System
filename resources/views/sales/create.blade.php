@@ -149,7 +149,6 @@
                         <div>
                             <div class="price fs-4" id="modal-price"></div>
                             <div class="small text-muted" id="modal-stock"></div>
-                            <div class="small text-muted" id="modal-sku"></div>
                         </div>
                     </div>
 
@@ -223,7 +222,7 @@
                 const list = PRODUCTS.filter(p =>
                     (!activeCat || p.category === activeCat) &&
                     (!q || (p.name + ' ' + (p.brand || '') + ' ' +
-                        p.variants.map(v => v.sku + ' ' + v.size + ' ' + v.color).join(' ')).toLowerCase().includes(q))
+                        p.variants.map(v => v.size + ' ' + v.color).join(' ')).toLowerCase().includes(q))
                 );
 
                 $('product-grid').innerHTML = list.length ? list.map(card).join('')
@@ -335,12 +334,10 @@
                 if (modalVariant) {
                     $('modal-price').textContent = peso(modalVariant.price);
                     $('modal-stock').textContent = ok ? modalVariant.stock + ' left' : 'Out of stock';
-                    $('modal-sku').textContent = 'SKU: ' + modalVariant.sku;
                     $('modal-qty').max = modalVariant.stock;
                 } else {
                     $('modal-price').textContent = '';
                     $('modal-stock').textContent = 'This combination is not available';
-                    $('modal-sku').textContent = '';
                 }
                 $('modal-qty').value = 1;
             }

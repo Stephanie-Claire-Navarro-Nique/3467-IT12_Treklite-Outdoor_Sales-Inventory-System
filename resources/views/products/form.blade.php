@@ -5,7 +5,6 @@
 
     $variantRows = old('variants', $product->variants->map(fn ($v) => [
         'id'                  => $v->id,
-        'sku'                 => $v->sku,
         'size'                => $v->size,
         'color'               => $v->color,
         'price'               => $v->price,

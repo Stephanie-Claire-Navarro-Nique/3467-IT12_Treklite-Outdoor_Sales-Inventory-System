@@ -10,7 +10,6 @@ use App\Models\StockMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
@@ -29,8 +28,7 @@ class ProductController extends Controller
             ->when($q !== '', fn ($w) => $w->where(fn ($s) => $s
                 ->where('name', 'like', "%{$q}%")
                 ->orWhere('brand', 'like', "%{$q}%")
-                ->orWhere('category', 'like', "%{$q}%")
-                ->orWhereHas('variants', fn ($v) => $v->where('sku', 'like', "%{$q}%"))))
+                ->orWhere('category', 'like', "%{$q}%")))
             ->when($brand === InventoryController::NO_BRAND, fn ($w) => $w->where(fn ($s) => $s->whereNull('brand')->orWhere('brand', '')))
             ->when($brand !== '' && $brand !== InventoryController::NO_BRAND, fn ($w) => $w->where('brand', $brand))
             ->when($category !== '', fn ($w) => $w->where('category', $category))
@@ -177,7 +175,6 @@ class ProductController extends Controller
             'image'                        => ['nullable', 'image', 'max:4096'],
             'variants'                     => ['required', 'array', 'min:1'],
             'variants.*.id'                => ['nullable', 'integer'],
-            'variants.*.sku'               => ['nullable', 'string', 'max:255'],   // blank = the app makes an internal code
             'variants.*.size'              => ['nullable', 'string', 'max:50'],
             'variants.*.color'             => ['nullable', 'string', 'max:50'],
             'variants.*.price'             => ['nullable', 'numeric', 'min:0'],
@@ -211,20 +208,7 @@ class ProductController extends Controller
         foreach ($rows as $i => $row) {
             $id = $row['id'] ?? null;
 
-            $sku = trim((string) ($row['sku'] ?? ''));
-
-            if ($sku !== '') {
-                $skuTaken = ProductVariant::where('sku', $sku)->when($id, fn ($q) => $q->where('id', '!=', $id))->exists();
-                if ($skuTaken) {
-                    throw ValidationException::withMessages(["variants.$i.sku" => 'The SKU ' . $sku . ' is already used.']);
-                }
-            } else {
-                // Models usually have no SKU: keep the existing code when editing, otherwise make an internal one.
-                $sku = ($id ? $product->variants()->whereKey($id)->value('sku') : null) ?: $this->makeSku($product);
-            }
-
             $attrs = [
-                'sku'                 => $sku,
                 'size'                => $row['size'] ?? null,
                 'color'               => $row['color'] ?? null,
                 'price'               => ($row['price'] ?? '') === '' ? null : $row['price'],
@@ -239,15 +223,5 @@ class ProductController extends Controller
                 $product->variants()->create($attrs + ['quantity' => 0]);
             }
         }
-    }
-
-    /** Internal item code such as TL-0007-K3QZ, used when the owner leaves the SKU blank. */
-    private function makeSku(Product $product): string
-    {
-        do {
-            $sku = sprintf('TL-%04d-%s', $product->id, Str::upper(Str::random(4)));
-        } while (ProductVariant::where('sku', $sku)->exists());
-
-        return $sku;
     }
 }

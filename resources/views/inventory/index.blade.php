@@ -13,10 +13,13 @@
         .status-badge { display: inline-block; width: 90px; }
         .brand-card { transition: box-shadow .15s, transform .15s, border-color .15s; border: 1px solid #e3e6e4; }
         .brand-card:hover { border-color: #1e5b31; box-shadow: 0 .4rem .9rem rgba(0,0,0,.12); transform: translateY(-2px); }
-        .stock-form { display: flex; gap: .25rem; justify-content: flex-end; flex-wrap: wrap; }
-        .stock-form .qty { width: 105px; flex: 0 0 105px; }
-        .stock-form .mode { width: 100px; flex: 0 0 100px; }
-        .stock-form .note { flex: 1 0 100%; }
+        /* The form is exactly as wide as the controls row (number box -> history button),
+           pushed to the right of the cell. The note + hint underneath stretch to that same width. */
+        .stock-form { display: grid; grid-template-columns: repeat(4, auto); gap: .25rem; width: fit-content; margin-left: auto; }
+        .stock-form .qty { width: 105px; }
+        .stock-form .mode { width: 100px; }
+        .stock-form .note,
+        .stock-form .hint { grid-column: 1 / -1; width: 0 !important; min-width: 100%; }
     </style>
 
     {{-- ===== Header: title + search ===== --}}

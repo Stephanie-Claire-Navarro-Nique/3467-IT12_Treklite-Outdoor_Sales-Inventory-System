@@ -77,8 +77,7 @@ class InventoryController extends Controller
             ->when($status === 'low', fn ($w) => $w->where('quantity', '>', 0)->whereColumn('quantity', '<=', 'low_stock_threshold'))
             ->when($status === 'ok', fn ($w) => $w->whereColumn('quantity', '>', 'low_stock_threshold'))
             ->when($q !== '', fn ($w) => $w->where(function ($s) use ($q) {
-                $s->where('sku', 'like', "%{$q}%")
-                  ->orWhere('size', 'like', "%{$q}%")
+                $s->where('size', 'like', "%{$q}%")
                   ->orWhere('color', 'like', "%{$q}%")
                   ->orWhereHas('product', fn ($p) => $p->where('name', 'like', "%{$q}%")
                       ->orWhere('brand', 'like', "%{$q}%")

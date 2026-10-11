@@ -117,7 +117,6 @@ class SaleController extends Controller
                 'image'    => $p->image_url,
                 'variants' => $p->variants->map(fn ($v) => [
                     'id'    => $v->id,
-                    'sku'   => $v->sku,
                     'size'  => $v->size,
                     'color' => $v->color,
                     'label' => $v->label,

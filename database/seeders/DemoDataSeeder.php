@@ -3,12 +3,10 @@
 namespace Database\Seeders;
 
 use App\Models\Product;
-use App\Models\ProductVariant;
 use App\Models\StockMovement;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 /**
  * OPTIONAL sample products WITH stock, so every screen has something to show while testing
@@ -98,7 +96,6 @@ class DemoDataSeeder extends Seeder
                     [$size, $color, $qty, $low] = $row;
 
                     $variant = $product->variants()->create([
-                        'sku'                 => $this->makeSku($product),
                         'size'                => $size,
                         'color'               => $color,
                         'price'               => $row[4] ?? null,
@@ -124,15 +121,5 @@ class DemoDataSeeder extends Seeder
         }
 
         $this->command?->info($added . ' sample product(s) added' . ($added < count($catalog) ? ', ' . (count($catalog) - $added) . ' already existed and were skipped.' : '.'));
-    }
-
-    /** Same internal item code the Products page makes, e.g. TL-0007-K3QZ. */
-    private function makeSku(Product $product): string
-    {
-        do {
-            $sku = sprintf('TL-%04d-%s', $product->id, Str::upper(Str::random(4)));
-        } while (ProductVariant::where('sku', $sku)->exists());
-
-        return $sku;
     }
 }
