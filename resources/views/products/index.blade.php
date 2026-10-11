@@ -63,7 +63,8 @@
                     <tr>
                         <th style="width:64px"></th>
                         <th>Model</th>
-                        <th>Belongs to</th>
+                        <th>Brand</th>
+                        <th>Category</th>
                         <th class="text-end">Price</th>
                         <th class="text-center">Variants</th>
                         <th class="text-end" style="width:420px"></th>
@@ -85,7 +86,9 @@
                             </td>
                             <td>
                                 @if ($p->brand)<span class="badge text-bg-dark">{{ $p->brand }}</span>@else<span class="badge text-bg-light border text-muted">No brand</span>@endif
-                                @if ($p->category)<span class="badge text-bg-secondary">{{ $p->category }}</span>@endif
+                            </td>
+                            <td>
+                                @if ($p->category)<span class="badge text-bg-secondary">{{ $p->category }}</span>@else<span class="text-muted">&mdash;</span>@endif
                             </td>
                             <td class="text-end">₱{{ number_format($p->price, 2) }}</td>
                             <td class="text-center">{{ $p->variants->count() }}</td>
@@ -115,7 +118,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="text-center text-muted py-4">{{ $hasFilter ? 'No products match these filters.' : 'No products yet.' }}</td></tr>
+                        <tr><td colspan="7" class="text-center text-muted py-4">{{ $hasFilter ? 'No products match these filters.' : 'No products yet.' }}</td></tr>
                     @endforelse
                 </tbody>
             </table>
