@@ -84,6 +84,7 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            transition: margin-left 0.2s ease-in-out;
         }
 
         .topbar {
@@ -96,7 +97,19 @@
         }
 
         .sidebar-toggle {
-            display: none;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        /* --- Desktop: user can fold the sidebar away (remembered in this browser) --- */
+        @media (min-width: 992px) {
+            html.sidebar-collapsed .sidebar {
+                transform: translateX(-100%);
+            }
+
+            html.sidebar-collapsed .main-wrapper {
+                margin-left: 0;
+            }
         }
 
         /* --- Mobile: collapse sidebar off-canvas --- */
@@ -134,6 +147,10 @@
         .sidebar a.profile:hover, .sidebar .profile.active { background: rgba(255, 255, 255, .14); }
         .sidebar .profile .bi-person-circle { font-size: 2rem; line-height: 1; }
     </style>
+    <script>
+        // Display preference only - nothing is saved to the database.
+        try { if (localStorage.getItem('sidebarCollapsed') === '1') document.documentElement.classList.add('sidebar-collapsed'); } catch (e) {}
+    </script>
 </head>
 <body>
     
@@ -195,8 +212,8 @@
 
 <div class="main-wrapper">
     <div class="topbar">
-        <button class="btn btn-outline-secondary sidebar-toggle" id="sidebar-toggle" type="button">
-            <i class="bi bi-list"></i>
+        <button class="btn btn-outline-secondary sidebar-toggle" id="sidebar-toggle" type="button" title="Show / hide menu" aria-label="Show or hide menu">
+            <i class="bi bi-layout-sidebar"></i>
         </button>
         <span class="fw-semibold">@yield('title', 'Treklite Outdoor')</span>
         <span></span>
@@ -227,8 +244,15 @@
     const toggleBtn = document.getElementById('sidebar-toggle');
 
     function toggleSidebar() {
-        sidebar.classList.toggle('show');
-        backdrop.classList.toggle('show');
+        if (window.matchMedia('(min-width: 992px)').matches) {
+            // Desktop: fold / unfold the sidebar and remember it
+            const collapsed = document.documentElement.classList.toggle('sidebar-collapsed');
+            try { localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0'); } catch (e) {}
+        } else {
+            // Phone / tablet: slide the menu in and out (unchanged)
+            sidebar.classList.toggle('show');
+            backdrop.classList.toggle('show');
+        }
     }
 
     toggleBtn?.addEventListener('click', toggleSidebar);
