@@ -35,6 +35,26 @@
             font-weight: 700;
             font-size: 1.15rem;
             border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+
+        /* Toggle that lives INSIDE the sidebar header */
+        .sidebar-toggle-in {
+            background: transparent;
+            border: 0;
+            color: rgba(255, 255, 255, 0.85);
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.4rem;
+            line-height: 1;
+            font-size: 1.1rem;
+        }
+
+        .sidebar-toggle-in:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
         }
 
         .sidebar .nav-link {
@@ -93,7 +113,9 @@
             padding: 0.75rem 1.5rem;
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: flex-start;
+            gap: 0.75rem;
+            min-height: 56px;
         }
 
         .sidebar-toggle {
@@ -103,6 +125,16 @@
 
         /* --- Desktop: user can fold the sidebar away (remembered in this browser) --- */
         @media (min-width: 992px) {
+            /* Sidebar open  -> the button is inside the sidebar header.
+               Sidebar folded -> the button moves out to the top-left of the page. */
+            html:not(.sidebar-collapsed) .topbar .sidebar-toggle {
+                display: none;
+            }
+
+            html.sidebar-collapsed .topbar .sidebar-toggle {
+                animation: toggle-in 0.2s ease-in;
+            }
+
             html.sidebar-collapsed .sidebar {
                 transform: translateX(-100%);
             }
@@ -146,6 +178,11 @@
         .sidebar .profile { display: flex; align-items: center; gap: .6rem; padding: .45rem .55rem; border-radius: .5rem; color: #fff; text-decoration: none; }
         .sidebar a.profile:hover, .sidebar .profile.active { background: rgba(255, 255, 255, .14); }
         .sidebar .profile .bi-person-circle { font-size: 2rem; line-height: 1; }
+
+        @keyframes toggle-in {
+            from { opacity: 0; transform: translateX(-8px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
     </style>
     <script>
         // Display preference only - nothing is saved to the database.
@@ -180,7 +217,12 @@
 <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
 <aside class="sidebar" id="sidebar">
-    <div class="brand">Treklite Outdoor</div>
+    <div class="brand">
+        <span>Treklite Outdoor</span>
+        <button class="sidebar-toggle-in" type="button" data-sidebar-toggle title="Hide menu" aria-label="Hide menu">
+            <i class="bi bi-layout-sidebar"></i>
+        </button>
+    </div>
     <nav class="nav flex-column mt-2">
         @foreach ($navItems as $item)
             <a href="{{ route($item['route']) }}"
@@ -212,11 +254,10 @@
 
 <div class="main-wrapper">
     <div class="topbar">
-        <button class="btn btn-outline-secondary sidebar-toggle" id="sidebar-toggle" type="button" title="Show / hide menu" aria-label="Show or hide menu">
+        <button class="btn btn-sm btn-outline-secondary sidebar-toggle" id="sidebar-toggle" type="button" data-sidebar-toggle title="Show menu" aria-label="Show menu">
             <i class="bi bi-layout-sidebar"></i>
         </button>
         <span class="fw-semibold">@yield('title', 'Treklite Outdoor')</span>
-        <span></span>
     </div>
 
     <div class="container-fluid py-4 px-4">
@@ -241,7 +282,7 @@
 <script>
     const sidebar = document.getElementById('sidebar');
     const backdrop = document.getElementById('sidebar-backdrop');
-    const toggleBtn = document.getElementById('sidebar-toggle');
+    const toggleBtns = document.querySelectorAll('[data-sidebar-toggle]');
 
     function toggleSidebar() {
         if (window.matchMedia('(min-width: 992px)').matches) {
@@ -255,7 +296,7 @@
         }
     }
 
-    toggleBtn?.addEventListener('click', toggleSidebar);
+    toggleBtns.forEach(btn => btn.addEventListener('click', toggleSidebar));
     backdrop?.addEventListener('click', toggleSidebar);
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
