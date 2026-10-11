@@ -14,7 +14,7 @@
         .brand-card { transition: box-shadow .15s, transform .15s, border-color .15s; border: 1px solid #e3e6e4; }
         .brand-card:hover { border-color: #1e5b31; box-shadow: 0 .4rem .9rem rgba(0,0,0,.12); transform: translateY(-2px); }
         .stock-form { display: flex; gap: .25rem; justify-content: flex-end; flex-wrap: wrap; }
-        .stock-form .qty { width: 80px; flex: 0 0 80px; }
+        .stock-form .qty { width: 105px; flex: 0 0 105px; }
         .stock-form .mode { width: 100px; flex: 0 0 100px; }
         .stock-form .note { flex: 1 0 100%; }
     </style>
@@ -159,7 +159,7 @@
                             <th class="text-end" style="width:90px">In stock</th>
                             <th class="text-center" style="width:120px">Status</th>
                             @if ($isOwner)
-                                <th class="text-end" style="width:330px">Receive / Count</th>
+                                <th class="text-end" style="width:360px">Receive / Count</th>
                             @endif
                         </tr>
                     </thead>
