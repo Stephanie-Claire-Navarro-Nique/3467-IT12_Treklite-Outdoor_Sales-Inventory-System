@@ -82,7 +82,7 @@ class InventoryReportController extends Controller
 
         return view('reports.inventory', compact(
             'variants', 'onlyAttention', 'totalUnits', 'totalValue', 'lowCount', 'outCount',
-            'period', 'date', 'periodLabel', 'prevDate', 'nextDate',
+            'period', 'date', 'from', 'to', 'periodLabel', 'prevDate', 'nextDate',
             'periodReceived', 'periodSold', 'periodAdjusted'
         ));
     }

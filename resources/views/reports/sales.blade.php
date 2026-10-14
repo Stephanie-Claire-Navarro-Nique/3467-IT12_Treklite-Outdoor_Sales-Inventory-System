@@ -99,25 +99,6 @@
             </div>
         </div>
 
-        @if ($period !== 'custom')
-            <div class="filter-divider"></div>
-            <div class="filter-group">
-                <div class="btn-group" role="group" aria-label="Move period">
-                    <a href="{{ $link(['date' => $prevDate->toDateString()]) }}" class="btn btn-sm btn-outline-secondary" title="Previous {{ $period }}"><i class="bi bi-chevron-left"></i></a>
-                    @if ($to->lt(now()))
-                        <a href="{{ $link(['date' => $nextDate->toDateString()]) }}" class="btn btn-sm btn-outline-secondary" title="Next {{ $period }}"><i class="bi bi-chevron-right"></i></a>
-                    @else
-                        <span class="btn btn-sm btn-outline-secondary disabled" title="Can't view future dates" aria-disabled="true"><i class="bi bi-chevron-right"></i></span>
-                    @endif
-                </div>
-                <form method="GET" class="mb-0">
-                    <input type="hidden" name="period" value="{{ $period }}">
-                    <input type="date" name="date" value="{{ $date->toDateString() }}" class="form-control form-control-sm"
-                           onchange="this.form.submit()" max="{{ now()->toDateString() }}" aria-label="Pick a date">
-                </form>
-            </div>
-        @endif
-
         <div class="filter-divider"></div>
 
         <form method="GET" class="filter-group mb-0">
