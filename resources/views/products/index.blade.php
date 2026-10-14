@@ -3,6 +3,10 @@
 @section('title', 'Products')
 
 @section('content')
+    <style>
+        /* Same-size icon buttons so every action in the list lines up */
+        .btn-icon { width: 34px; height: 31px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+    </style>
     @php
         $hasFilter = $q !== '' || $brand !== '' || $category !== '' || $status !== 'active';
         $noBrand   = \App\Http\Controllers\InventoryController::NO_BRAND;
@@ -15,7 +19,7 @@
 
     <div class="alert alert-light border small py-2">
         <i class="bi bi-info-circle"></i> This page is for <strong>creating and editing products</strong> (name, brand, category, price, sizes and colors).
-        To receive deliveries or count stock, use <strong>Manage Inventory</strong> on the product.
+        To receive deliveries or count stock, use <strong>Manage Inventory</strong> (<i class="bi bi-box-seam"></i>) on the product.
     </div>
 
     <form method="GET" action="{{ route('products.index') }}" class="card shadow-sm mb-3">
@@ -93,28 +97,30 @@
                             <td class="text-end">₱{{ number_format($p->price, 2) }}</td>
                             <td class="text-center">{{ $p->variants->count() }}</td>
                             <td class="text-end">
-                                @if ($p->is_active)
-                                    <a href="{{ route('inventory.index', ['product' => $p->id]) }}" class="btn btn-sm btn-outline-success"><i class="bi bi-box-seam"></i> Manage Inventory</a>
-                                    <a href="{{ route('products.edit', $p) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
-                                    <form method="POST" action="{{ route('products.archive', $p) }}" class="d-inline"
-                                          onsubmit="return confirm('Archive {{ addslashes($p->name) }}? It will no longer appear in New Sale or Inventory. Past sales are not affected.');">
-                                        @csrf
-                                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-archive"></i> Archive</button>
-                                    </form>
-                                @else
-                                    <form method="POST" action="{{ route('products.restore', $p) }}" class="d-inline">
-                                        @csrf
-                                        <button class="btn btn-sm btn-outline-success"><i class="bi bi-arrow-counterclockwise"></i> Restore</button>
-                                    </form>
-                                @endif
-                                @if ($deletable->contains($p->id))
-                                    <form method="POST" action="{{ route('products.destroy', $p) }}" class="d-inline"
-                                          onsubmit="return confirm('Permanently delete {{ addslashes($p->name) }}? This cannot be undone.');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button class="btn btn-sm btn-danger" title="No sales or stock records yet, so it can be deleted"><i class="bi bi-trash"></i> Delete</button>
-                                    </form>
-                                @endif
+                                <div class="d-inline-flex gap-1 justify-content-end">
+                                    @if ($p->is_active)
+                                        <a href="{{ route('inventory.index', ['product' => $p->id]) }}" class="btn btn-sm btn-outline-success btn-icon" title="Manage Inventory" aria-label="Manage Inventory"><i class="bi bi-box-seam"></i></a>
+                                        <a href="{{ route('products.edit', $p) }}" class="btn btn-sm btn-outline-secondary btn-icon" title="Edit" aria-label="Edit"><i class="bi bi-pencil-square"></i></a>
+                                        <form method="POST" action="{{ route('products.archive', $p) }}" class="d-inline"
+                                              onsubmit="return confirm('Archive {{ addslashes($p->name) }}? It will no longer appear in New Sale or Inventory. Past sales are not affected.');">
+                                            @csrf
+                                            <button class="btn btn-sm btn-outline-danger btn-icon" title="Archive" aria-label="Archive"><i class="bi bi-archive"></i></button>
+                                        </form>
+                                    @else
+                                        <form method="POST" action="{{ route('products.restore', $p) }}" class="d-inline">
+                                            @csrf
+                                            <button class="btn btn-sm btn-outline-success btn-icon" title="Restore" aria-label="Restore"><i class="bi bi-arrow-counterclockwise"></i></button>
+                                        </form>
+                                    @endif
+                                    @if ($deletable->contains($p->id))
+                                        <form method="POST" action="{{ route('products.destroy', $p) }}" class="d-inline"
+                                              onsubmit="return confirm('Permanently delete {{ addslashes($p->name) }}? This cannot be undone.');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button class="btn btn-sm btn-danger btn-icon" title="Delete (no sales or stock records yet)" aria-label="Delete"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                     @empty
