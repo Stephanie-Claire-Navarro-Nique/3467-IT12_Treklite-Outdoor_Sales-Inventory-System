@@ -13,7 +13,7 @@
         .status-badge { display: inline-block; width: 90px; }
         .brand-card { transition: box-shadow .15s, transform .15s, border-color .15s; border: 1px solid #e3e6e4; }
         .brand-card:hover { border-color: #1e5b31; box-shadow: 0 .4rem .9rem rgba(0,0,0,.12); transform: translateY(-2px); }
-        .btn-icon { width: 34px; height: 31px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+        .btn-icon { min-width: 34px; height: 31px; padding: 0 .6rem; display: inline-flex; align-items: center; justify-content: center; gap: .35rem; }
     </style>
 
     {{-- ===== Header: title + search ===== --}}
@@ -157,7 +157,7 @@
                             <th class="text-end" style="width:90px">In stock</th>
                             <th class="text-center" style="width:120px">Status</th>
                             @if ($isOwner)
-                                <th class="text-end" style="width:130px">Receive / Count</th>
+                                <th class="text-end" style="width:230px">Actions</th>
                             @endif
                         </tr>
                     </thead>
@@ -198,9 +198,9 @@
                                                     data-size="{{ $v->size?->name ?? '—' }}"
                                                     data-color="{{ $v->color?->name ?? '—' }}"
                                                     data-current="{{ $v->quantity }}">
-                                                <i class="bi bi-clipboard2-plus"></i>
+                                                <i class="bi bi-clipboard2-plus"></i> Stock
                                             </button>
-                                            <a href="{{ route('inventory.history', ['variant' => $v->id]) }}" class="btn btn-sm btn-outline-secondary btn-icon" title="Stock history"><i class="bi bi-clock-history"></i></a>
+                                            <a href="{{ route('inventory.history', ['variant' => $v->id]) }}" class="btn btn-sm btn-outline-secondary btn-icon" title="Stock history"><i class="bi bi-clock-history"></i> History</a>
                                         </div>
                                     </td>
                                 @endif

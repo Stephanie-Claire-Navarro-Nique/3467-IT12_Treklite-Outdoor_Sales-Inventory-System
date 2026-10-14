@@ -68,7 +68,6 @@
                             </div>
                             <div class="col-12 form-text mt-1">
                                 Pick from the options, or press <i class="bi bi-plus-lg"></i> to add a new one.
-                                <a href="{{ route('options.index') }}" target="_blank">Manage options</a> to rename or delete them.
                             </div>
                         </div>
                         <div class="mb-2">
@@ -95,10 +94,9 @@
                         <div class="small text-muted mb-2">
                             Each size/color combination is one row. For items with no size or color, keep a single row and leave both blank.
                             The first column shows the <strong>Model</strong> (read-only, it follows what you type on the left). The system keeps its own item code, so there is nothing else to type.
+                            Type the <strong>Stock</strong> you have now for each new row (leave 0 if none yet). It is saved as the opening stock and recorded in Stock History.
                             @if ($editing)
-                                Stock is not changed here. Use <strong>Inventory</strong> (Receive / Count) so every change is logged.
-                            @else
-                                New items start with <strong>0 stock</strong>. After saving, you will be taken to <strong>Inventory</strong> to receive the first stock.
+                                Stock of existing rows is not changed here. Use <strong>Inventory</strong> (Receive / Count) so every change is logged.
                             @endif
                         </div>
                         <div class="table-responsive">
@@ -110,7 +108,7 @@
                                         <th>Color <button type="button" class="btn btn-outline-success btn-sm py-0 px-1 ms-1" data-quick="colors" title="Add a new color" aria-label="Add a new color"><i class="bi bi-plus-lg"></i></button></th>
                                         <th style="width:100px">Price</th>
                                         <th style="width:80px">Low at</th>
-                                        @if ($editing)<th style="width:90px">Stock</th>@endif
+                                        <th style="width:100px">Stock</th>
                                         <th></th>
                                     </tr>
                                 </thead>
@@ -167,7 +165,9 @@
                 <td>${pickerHtml('colors', `variants[${i}][color]`, v.color)}</td>
                 <td><input type="number" step="0.01" min="0" name="variants[${i}][price]" class="form-control form-control-sm" value="${esc(v.price)}" placeholder="default"></td>
                 <td><input type="number" min="0" name="variants[${i}][low_stock_threshold]" class="form-control form-control-sm" value="${esc(v.low_stock_threshold ?? 5)}" required></td>
-                ${EDITING ? `<td><span class="text-muted">${esc(v.quantity ?? 0)}</span></td>` : ''}
+                <td>${isNew
+                    ? `<input type="number" min="0" max="1000000" name="variants[${i}][initial_stock]" class="form-control form-control-sm" value="${esc(v.initial_stock ?? 0)}" aria-label="Stock">`
+                    : `<span class="text-muted">${esc(v.quantity ?? 0)}</span>`}</td>
                 <td>${isNew ? '<button type="button" class="btn btn-sm btn-outline-danger remove-variant">&times;</button>' : ''}</td>`;
             tbody.appendChild(tr);
         }

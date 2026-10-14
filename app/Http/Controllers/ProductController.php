@@ -79,7 +79,7 @@ class ProductController extends Controller
         ActivityLog::record('product_add', 'Added product ' . $product->name . ' (price ₱' . number_format((float) $product->price, 2) . ', ' . count($data['variants']) . ' size/color row(s)).');
 
         return redirect()->route('inventory.index', ['product' => $product->id])
-            ->with('status', 'Product added. Use Receive below to add its stock.');
+            ->with('status', 'Product added with its opening stock. Use Receive / Count here for any later changes.');
     }
 
     public function edit(Product $product)
