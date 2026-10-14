@@ -3,12 +3,71 @@
 namespace App\Http\Controllers;
 
 use App\Models\Sale;
+use App\Support\TableExport;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class ReportController extends Controller
 {
     public function sales(Request $request)
+    {
+        return view('reports.sales', $this->salesData($request));
+    }
+
+    /** The Sales Report as a PDF (?format=pdf) or an Excel file (?format=xlsx, the default): same period and numbers as the page. */
+    public function export(Request $request)
+    {
+        extract($this->salesData($request));   // sales, from, to, period, totalRevenue, byPayment, voidedCount, voidedTotal ...
+
+        $periodText = $from->isSameDay($to)
+            ? $from->format('M d, Y')
+            : $from->format('M d, Y') . ' – ' . $to->format('M d, Y');
+
+        $summary = [
+            ['Total revenue', (float) $totalRevenue, 'money'],
+            ['Transactions', $sales->count(), 'int'],
+        ];
+        foreach (Sale::PAYMENT_LABELS as $key => $label) {
+            // Old methods (PayMaya / Card) only show when they have sales in this period.
+            if (! isset(Sale::PAYMENT_METHODS[$key]) && ($byPayment[$key]['total'] ?? 0) <= 0) {
+                continue;
+            }
+            $summary[] = [$label . ' (' . ($byPayment[$key]['count'] ?? 0) . ')', (float) ($byPayment[$key]['total'] ?? 0), 'money'];
+        }
+
+        $data = [
+            'title'    => 'Sales Report',
+            'filename' => 'treklite-sales-report-' . $from->format('Ymd') . '-' . $to->format('Ymd'),
+            'subtitle' => ['Period: ' . $periodText],
+            'summary'  => $summary,
+            'columns'  => [
+                ['key' => 'invoice',  'label' => 'Invoice #',    'type' => 'text',     'align' => 'left',  'width' => 16],
+                ['key' => 'date',     'label' => 'Date',         'type' => 'datetime', 'align' => 'left',  'width' => 20],
+                ['key' => 'customer', 'label' => 'Customer',     'type' => 'text',     'align' => 'left',  'width' => 24],
+                ['key' => 'cashier',  'label' => 'Processed By', 'type' => 'text',     'align' => 'left',  'width' => 20],
+                ['key' => 'payment',  'label' => 'Payment',      'type' => 'text',     'align' => 'left',  'width' => 14],
+                ['key' => 'total',    'label' => 'Total',        'type' => 'money',    'align' => 'right', 'width' => 16],
+            ],
+            'rows' => $sales->values()->map(fn ($s) => [
+                'invoice'  => $s->invoice_number,
+                'date'     => $s->sold_at,
+                'customer' => $s->customer_name,
+                'cashier'  => $s->user?->name,
+                'payment'  => $s->payment_label,
+                'total'    => (float) $s->total_amount,
+            ])->all(),
+            'totals'      => ['label' => 'Total', 'values' => ['total' => (float) $totalRevenue]],
+            'footnote'    => $voidedCount > 0
+                ? $voidedCount . ' voided sale(s) (₱' . number_format($voidedTotal, 2) . ') in this period are not included.'
+                : null,
+            'orientation' => 'portrait',
+        ];
+
+        return TableExport::download($data, $request->query('format') === 'pdf' ? 'pdf' : 'xlsx');
+    }
+
+    /** Everything the Sales Report needs, worked out from the period in the link. */
+    private function salesData(Request $request): array
     {
         $periods = ['day', 'week', 'month', 'year', 'custom'];
         $period  = in_array($request->query('period'), $periods, true) ? $request->query('period') : null;
@@ -69,7 +128,7 @@ class ReportController extends Controller
             'total' => $g->sum('total_amount'),
         ]);
 
-        return view('reports.sales', compact('sales', 'from', 'to', 'period', 'date', 'prevDate', 'nextDate', 'totalRevenue', 'byPayment', 'voidedCount', 'voidedTotal'));
+        return compact('sales', 'from', 'to', 'period', 'date', 'prevDate', 'nextDate', 'totalRevenue', 'byPayment', 'voidedCount', 'voidedTotal');
     }
 
     /** A date from the link, or the default when it is empty or not a real date (so a bad link never crashes the page). */

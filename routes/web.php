@@ -72,7 +72,9 @@ Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
     Route::post('/inventory/{variant}/stock', [InventoryController::class, 'stock'])->name('inventory.stock');
 
     Route::get('/reports/sales', [ReportController::class, 'sales'])->name('reports.sales');
+    Route::get('/reports/sales/export', [ReportController::class, 'export'])->name('reports.sales.export');          // ?format=pdf|xlsx
     Route::get('/reports/inventory', [InventoryReportController::class, 'index'])->name('reports.inventory');
+    Route::get('/reports/inventory/export', [InventoryReportController::class, 'export'])->name('reports.inventory.export');   // ?format=pdf|xlsx
 
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
     Route::get('/users/create', [UserController::class, 'create'])->name('users.create');

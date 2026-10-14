@@ -4,11 +4,10 @@
 
 @section('content')
     <style>
+        @page { size: A4 portrait; margin: 10mm; }
         @media print {
-            .sidebar, .topbar, .no-print, .sidebar-backdrop { display: none !important; }
-            .main-wrapper { margin-left: 0 !important; }
-            body { background: #fff !important; }
             .chart-card { break-inside: avoid; }
+            .chart-box { height: 220px !important; }
         }
         .chart-box { position: relative; height: 280px; }
     </style>
@@ -78,9 +77,16 @@
         </div>
     @endif
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    {{-- Paper heading (hidden on screen) --}}
+    <div class="print-header d-none d-print-block">
+        <div class="ph-brand">Treklite Outdoor</div>
+        <div class="ph-title">Sales Report</div>
+        <div class="ph-meta">Printed {{ now()->format('M d, Y h:i A') }}</div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-3 d-print-none">
         <h3 class="mb-0">Sales Report</h3>
-        <button onclick="window.print()" class="btn btn-outline-dark no-print"><i class="bi bi-printer"></i> Print</button>
+        @include('reports.partials.actions', ['exportRoute' => 'reports.sales.export'])
     </div>
     
     <ul class="nav nav-tabs mb-3 no-print">
@@ -119,7 +125,7 @@
 
     <div class="small text-muted mb-2">{{ $from->format('M d, Y') }} &ndash; {{ $to->format('M d, Y') }}</div>
 
-    <div class="row g-3 mb-3">
+    <div class="row g-3 mb-3 print-row">
         <div class="col-md-4">
             <div class="card shadow-sm h-100"><div class="card-body">
                 <div class="text-muted small">Total revenue</div>

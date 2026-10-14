@@ -36,4 +36,36 @@
     .filter-bar .range-sep { color: #9aa7a0; }
     .filter-label { font-size: .75rem; font-weight: 600; color: #6b7a72; text-transform: uppercase; letter-spacing: .04em; }
     @media (max-width: 768px) { .filter-divider { display: none; } }
+
+    /* ---------- Printing: same clean layout on both reports ---------- */
+    @media print {
+        * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        html, body { background: #fff !important; }
+        .sidebar, .topbar, .no-print, .sidebar-backdrop { display: none !important; }
+        .main-wrapper { margin-left: 0 !important; }
+        .container-fluid { padding: 0 !important; max-width: 100% !important; }
+
+        /* The table may never be cut off at the edge of the page */
+        .table-responsive { overflow: visible !important; }
+        .card { box-shadow: none !important; border-color: #cfd8d3 !important; }
+        table { width: 100% !important; font-size: 8.5pt; }
+        .table > :not(caption) > * > * { padding: .3rem .4rem !important; }
+        td.text-end { white-space: nowrap; }
+        thead { display: table-header-group; }      /* header repeats on every printed page */
+        tfoot { display: table-footer-group; }
+        tr { break-inside: avoid; page-break-inside: avoid; }
+        .badge-soft { padding: .15em .45em; font-size: 7.5pt; }
+
+        /* Summary cards stay side by side, even on a portrait page */
+        .print-row > .col-md-3 { width: 25%; }
+        .print-row > .col-md-4 { width: 33.3333%; }
+        .print-row > .col-md-8 { width: 66.6667%; }
+        .print-row .card-body { padding: .6rem .8rem; }
+
+        /* Page heading that only appears on paper */
+        .print-header { border-bottom: 2px solid #1e5b31; padding-bottom: 6px; margin-bottom: 10px; }
+        .print-header .ph-brand { font-size: 8pt; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #1e5b31; }
+        .print-header .ph-title { font-size: 18pt; font-weight: 700; line-height: 1.2; }
+        .print-header .ph-meta  { font-size: 8pt; color: #6b7a72; }
+    }
 </style>

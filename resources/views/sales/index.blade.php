@@ -7,8 +7,16 @@
         <h3 class="mb-0">Sales Records</h3>
         <div class="d-flex gap-2">
             @if (auth()->user()->hasFullAccess())
-                {{-- Downloads exactly what the filters below show --}}
-                <a href="{{ route('sales.export', request()->query()) }}" class="btn btn-outline-secondary"><i class="bi bi-download"></i> Export CSV</a>
+                {{-- Downloads every sale that matches the filters below (not just this page) --}}
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-download"></i> Export
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{{ route('sales.export', array_merge(request()->query(), ['format' => 'pdf'])) }}"><i class="bi bi-file-earmark-pdf text-danger"></i> PDF</a></li>
+                        <li><a class="dropdown-item" href="{{ route('sales.export', array_merge(request()->query(), ['format' => 'xlsx'])) }}"><i class="bi bi-file-earmark-excel text-success"></i> Excel (.xlsx)</a></li>
+                    </ul>
+                </div>
             @endif
             <a href="{{ route('sales.create') }}" class="btn btn-success">+ New Sale</a>
         </div>

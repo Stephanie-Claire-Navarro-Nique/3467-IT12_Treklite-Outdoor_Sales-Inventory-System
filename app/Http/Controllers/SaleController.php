@@ -11,6 +11,7 @@ use App\Models\SaleVoid;
 use App\Models\StockMovement;
 use App\Models\User;
 use App\Support\ImageStore;
+use App\Support\TableExport;
 use Illuminate\Support\Carbon;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
@@ -34,39 +35,76 @@ class SaleController extends Controller
         return view('sales.index', $filters + compact('sales', 'summary', 'voidedCount', 'cashiers', 'isOwner'));
     }
 
-    /** Owner only: the same filtered list as Sales Records, downloaded as a CSV file (opens in Excel). */
+    /**
+     * Owner only: the same filtered list as Sales Records (every matching sale, not just the page on screen),
+     * downloaded as a PDF (?format=pdf) or an Excel file (?format=xlsx, the default).
+     */
     public function export(Request $request)
     {
-        [$query] = $this->filteredSales($request, true);
-        $rows = $query->with('user')->latest('sold_at')->get();
+        [$query, $filters] = $this->filteredSales($request, true);
+        $sales  = $query->with('user')->latest('sold_at')->get()->values();
+        $active = $sales->filter(fn ($s) => ! $s->isVoided());
 
-        // A text cell that starts with = + - @ could run as a formula in Excel, so it gets a leading apostrophe.
-        $safe = fn ($v) => is_string($v) && $v !== '' && strpbrk($v[0], '=+-@') !== false ? "'" . $v : $v;
+        // Describe what the filters were, so the file explains itself.
+        $notes = [];
+        if ($filters['from'] || $filters['to']) {
+            $notes[] = 'Date range: ' . ($filters['from'] ? Carbon::parse($filters['from'])->format('M d, Y') : 'start')
+                . ' – ' . ($filters['to'] ? Carbon::parse($filters['to'])->format('M d, Y') : 'today');
+        }
+        if ($filters['q'] !== '')       { $notes[] = 'Search: ' . $filters['q']; }
+        if ($filters['cashier'])        { $notes[] = 'Cashier: ' . (User::find($filters['cashier'])?->name ?? '—'); }
+        if ($filters['payment'] !== '') { $notes[] = 'Payment: ' . (Sale::PAYMENT_LABELS[$filters['payment']] ?? $filters['payment']); }
+        if (! $notes) { $notes[] = 'All sales (no filters)'; }
 
-        return response()->streamDownload(function () use ($rows, $safe) {
-            $out = fopen('php://output', 'w');
-            fwrite($out, "\xEF\xBB\xBF");   // UTF-8 marker so Excel shows the peso sign and accents correctly
-            fputcsv($out, ['Invoice', 'Date', 'Customer', 'Contact', 'Cashier', 'Payment', 'Total', 'Amount received', 'Change', 'Status', 'Void reason'], ',', '"', '');
-            foreach ($rows as $s) {
-                fputcsv($out, [
-                    $s->invoice_number,
-                    $s->sold_at->format('Y-m-d H:i'),
-                    $safe($s->customer_name),
-                    $safe($s->customer_contact),
-                    $safe($s->user?->name),
-                    $s->payment_label,
-                    number_format((float) $s->total_amount, 2, '.', ''),
-                    number_format((float) $s->amount_tendered, 2, '.', ''),
-                    number_format((float) $s->change_amount, 2, '.', ''),
-                    $s->isVoided() ? 'VOIDED' : 'Completed',
-                    $safe($s->void_reason),
-                ], ',', '"', '');
-            }
-            fclose($out);
-        }, 'treklite-sales-' . now()->format('Ymd-His') . '.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+        $voidedCount = $sales->count() - $active->count();
+
+        $data = [
+            'title'    => 'Sales Records',
+            'filename' => 'treklite-sales-records-' . now()->format('Ymd-His'),
+            'subtitle' => $notes,
+            'summary'  => [
+                ['Completed sales', $active->count(), 'int'],
+                ['Total revenue', (float) $active->sum('total_amount'), 'money'],
+                ['Voided (not counted)', $voidedCount, 'int'],
+            ],
+            'columns' => [
+                ['key' => 'invoice',   'label' => 'Invoice #',       'type' => 'text',     'align' => 'left',   'width' => 15],
+                ['key' => 'date',      'label' => 'Date',            'type' => 'datetime', 'align' => 'left',   'width' => 19],
+                ['key' => 'customer',  'label' => 'Customer',        'type' => 'text',     'align' => 'left',   'width' => 22],
+                ['key' => 'contact',   'label' => 'Contact',         'type' => 'text',     'align' => 'left',   'width' => 15],
+                ['key' => 'cashier',   'label' => 'Processed By',    'type' => 'text',     'align' => 'left',   'width' => 18],
+                ['key' => 'payment',   'label' => 'Payment',         'type' => 'text',     'align' => 'left',   'width' => 13],
+                ['key' => 'reference', 'label' => 'Reference no.',   'type' => 'text',     'align' => 'left',   'width' => 17],
+                ['key' => 'total',     'label' => 'Total',           'type' => 'money',    'align' => 'right',  'width' => 14],
+                ['key' => 'tendered',  'label' => 'Amount received', 'type' => 'money',    'align' => 'right',  'width' => 16, 'pdf' => false],
+                ['key' => 'change',    'label' => 'Change',          'type' => 'money',    'align' => 'right',  'width' => 12, 'pdf' => false],
+                ['key' => 'status',    'label' => 'Status',          'type' => 'text',     'align' => 'center', 'width' => 12],
+                ['key' => 'reason',    'label' => 'Void reason',     'type' => 'text',     'align' => 'left',   'width' => 24, 'pdf' => false],
+            ],
+            'rows' => $sales->map(fn ($s) => [
+                'invoice'   => $s->invoice_number,
+                'date'      => $s->sold_at,
+                'customer'  => $s->customer_name,
+                'contact'   => $s->customer_contact,
+                'cashier'   => $s->user?->name,
+                'payment'   => $s->payment_label,
+                'reference' => $s->payment_reference,
+                'total'     => (float) $s->total_amount,
+                'tendered'  => (float) $s->amount_tendered,
+                'change'    => (float) $s->change_amount,
+                'status'    => $s->isVoided() ? 'VOIDED' : 'Completed',
+                'reason'    => $s->void_reason,
+            ])->all(),
+            'muted'  => $sales->keys()->filter(fn ($i) => $sales[$i]->isVoided())->values()->all(),
+            'totals' => ['label' => 'Total (completed sales only)', 'values' => ['total' => (float) $active->sum('total_amount')]],
+            'footnote'    => $voidedCount > 0 ? "Struck-through rows are voided sales. They are listed for reference and are not counted in the total." : null,
+            'orientation' => 'landscape',
+        ];
+
+        return TableExport::download($data, $request->query('format') === 'pdf' ? 'pdf' : 'xlsx');
     }
 
-    /** Filters used by Sales Records and the CSV export. Staff only ever see the sales they processed. */
+    /** Filters used by Sales Records and its PDF / Excel export. Staff only ever see the sales they processed. */
     private function filteredSales(Request $request, bool $isOwner): array
     {
         $q       = trim((string) $request->query('q'));

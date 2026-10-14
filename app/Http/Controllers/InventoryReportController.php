@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ProductVariant;
 use App\Models\StockMovement;
+use App\Support\TableExport;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -16,6 +17,73 @@ class InventoryReportController extends Controller
     private const PERIODS = ['day', 'week', 'month', 'year', 'custom'];
 
     public function index(Request $request)
+    {
+        return view('reports.inventory', $this->reportData($request));
+    }
+
+    /** The Inventory Report as a PDF (?format=pdf) or an Excel file (?format=xlsx, the default): same period, switch and numbers as the page. */
+    public function export(Request $request)
+    {
+        extract($this->reportData($request));   // variants, onlyAttention, totals, period, from, to, periodLabel ...
+
+        $notes = [
+            'Stock as of ' . now()->format('M d, Y h:i A'),
+            'Received / Sold / Adjusted for ' . $periodLabel,
+        ];
+        if ($onlyAttention) {
+            $notes[] = 'Showing low / out-of-stock items only';
+        }
+
+        $data = [
+            'title'    => 'Inventory Report',
+            'filename' => 'treklite-inventory-report-' . now()->format('Ymd-His'),
+            'subtitle' => $notes,
+            'summary'  => [
+                ['Units on hand', $totalUnits, 'int'],
+                ['Stock value', $totalValue, 'money'],
+                ['Low stock', $lowCount, 'int'],
+                ['Out of stock', $outCount, 'int'],
+            ],
+            'columns' => [
+                ['key' => 'product',  'label' => 'Product',      'type' => 'text',   'align' => 'left',   'width' => 24],
+                ['key' => 'variant',  'label' => 'Size / Color', 'type' => 'text',   'align' => 'left',   'width' => 16],
+                ['key' => 'quantity', 'label' => 'Quantity',     'type' => 'int',    'align' => 'right',  'width' => 10],
+                ['key' => 'received', 'label' => 'Received',     'type' => 'dash',   'align' => 'right',  'width' => 10],
+                ['key' => 'sold',     'label' => 'Sold',         'type' => 'dash',   'align' => 'right',  'width' => 8],
+                ['key' => 'adjusted', 'label' => 'Adjusted',     'type' => 'signed', 'align' => 'right',  'width' => 10],
+                ['key' => 'low_at',   'label' => 'Low at',       'type' => 'int',    'align' => 'right',  'width' => 8],
+                ['key' => 'status',   'label' => 'Status',       'type' => 'text',   'align' => 'center', 'width' => 12],
+                ['key' => 'price',    'label' => 'Unit price',   'type' => 'money',  'align' => 'right',  'width' => 14],
+                ['key' => 'value',    'label' => 'Stock value',  'type' => 'money',  'align' => 'right',  'width' => 15],
+            ],
+            'rows' => $variants->values()->map(fn ($v) => [
+                'product'  => $v->product->name,
+                'variant'  => $v->label,
+                'quantity' => (int) $v->quantity,
+                'received' => (int) $v->period_received,
+                'sold'     => (int) $v->period_sold,
+                'adjusted' => (int) $v->period_adjusted,
+                'low_at'   => (int) $v->low_stock_threshold,
+                'status'   => $v->isOutOfStock() ? 'Out of stock' : ($v->isLowStock() ? 'Low stock' : 'In-Stock'),
+                'price'    => (float) $v->selling_price,
+                'value'    => (float) ($v->quantity * $v->selling_price),
+            ])->all(),
+            'totals' => ['label' => 'Total', 'values' => [
+                'quantity' => $totalUnits,
+                'received' => $periodReceived,
+                'sold'     => $periodSold,
+                'adjusted' => $periodAdjusted,
+                'value'    => $totalValue,
+            ]],
+            'footnote'    => null,
+            'orientation' => 'landscape',
+        ];
+
+        return TableExport::download($data, $request->query('format') === 'pdf' ? 'pdf' : 'xlsx');
+    }
+
+    /** Everything the Inventory Report needs, worked out from the period and switch in the link. */
+    private function reportData(Request $request): array
     {
         $onlyAttention = $request->boolean('attention');
 
@@ -91,11 +159,11 @@ class InventoryReportController extends Controller
         $periodSold      = (int) $variants->sum('period_sold');
         $periodAdjusted  = (int) $variants->sum('period_adjusted');
 
-        return view('reports.inventory', compact(
+        return compact(
             'variants', 'onlyAttention', 'totalUnits', 'totalValue', 'lowCount', 'outCount',
             'period', 'date', 'from', 'to', 'periodLabel',
             'periodReceived', 'periodSold', 'periodAdjusted'
-        ));
+        );
     }
 
     /** A date from the link, or today when it is empty or not a real date (so a bad link never crashes the page). */

@@ -4,11 +4,7 @@
 
 @section('content')
     <style>
-        @media print {
-            .sidebar, .topbar, .no-print, .sidebar-backdrop { display: none !important; }
-            .main-wrapper { margin-left: 0 !important; }
-            body { background: #fff !important; }
-        }
+        @page { size: A4 landscape; margin: 10mm; }
     </style>
 
     @include('reports.partials.styles')
@@ -25,9 +21,16 @@
         $periods = ['day' => 'Today', 'week' => 'Week', 'month' => 'Month', 'year' => 'Year'];
     @endphp
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    {{-- Paper heading (hidden on screen) --}}
+    <div class="print-header d-none d-print-block">
+        <div class="ph-brand">Treklite Outdoor</div>
+        <div class="ph-title">Inventory Report</div>
+        <div class="ph-meta">Printed {{ now()->format('M d, Y h:i A') }}</div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-3 d-print-none">
         <h3 class="mb-0">Inventory Report</h3>
-        <button onclick="window.print()" class="btn btn-outline-dark no-print"><i class="bi bi-printer"></i> Print</button>
+        @include('reports.partials.actions', ['exportRoute' => 'reports.inventory.export'])
     </div>
 
     {{-- Report tabs --}}
@@ -87,7 +90,7 @@
         &middot; Received / Sold / Adjusted for <strong>{{ $periodLabel }}</strong>
     </div>
 
-    <div class="row g-3 mb-3">
+    <div class="row g-3 mb-3 print-row">
         <div class="col-6 col-md-3"><div class="card shadow-sm h-100"><div class="card-body">
             <div class="text-muted small">Units on hand</div><div class="fs-4 fw-bold">{{ number_format($totalUnits) }}</div></div></div></div>
         <div class="col-6 col-md-3"><div class="card shadow-sm h-100"><div class="card-body">
