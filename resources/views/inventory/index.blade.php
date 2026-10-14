@@ -13,13 +13,7 @@
         .status-badge { display: inline-block; width: 90px; }
         .brand-card { transition: box-shadow .15s, transform .15s, border-color .15s; border: 1px solid #e3e6e4; }
         .brand-card:hover { border-color: #1e5b31; box-shadow: 0 .4rem .9rem rgba(0,0,0,.12); transform: translateY(-2px); }
-        /* The form is exactly as wide as the controls row (number box -> history button),
-           pushed to the right of the cell. The note + hint underneath stretch to that same width. */
-        .stock-form { display: grid; grid-template-columns: repeat(4, auto); gap: .25rem; width: fit-content; margin-left: auto; }
-        .stock-form .qty { width: 105px; }
-        .stock-form .mode { width: 100px; }
-        .stock-form .note,
-        .stock-form .hint { grid-column: 1 / -1; width: 0 !important; min-width: 100%; }
+        .btn-icon { width: 34px; height: 31px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
     </style>
 
     {{-- ===== Header: title + search ===== --}}
@@ -158,11 +152,12 @@
                         <tr>
                             <th style="width:56px"></th>
                             <th>Model</th>
-                            <th>Size / Color</th>
+                            <th style="width:140px">Size</th>
+                            <th style="width:140px">Color</th>
                             <th class="text-end" style="width:90px">In stock</th>
                             <th class="text-center" style="width:120px">Status</th>
                             @if ($isOwner)
-                                <th class="text-end" style="width:360px">Receive / Count</th>
+                                <th class="text-end" style="width:130px">Receive / Count</th>
                             @endif
                         </tr>
                     </thead>
@@ -180,7 +175,8 @@
                                     {{ $v->product->name }}
                                     <div class="small text-muted">{{ collect([$v->product->brand?->name, $v->product->category?->name])->filter()->implode(' · ') }}</div>
                                 </td>
-                                <td>{{ $v->label }}</td>
+                                <td>{{ $v->size?->name ?? '—' }}</td>
+                                <td>{{ $v->color?->name ?? '—' }}</td>
                                 <td class="text-end fw-semibold">{{ $v->quantity }}</td>
                                 <td class="text-center">
                                     @if ($v->isOutOfStock())
@@ -192,25 +188,25 @@
                                     @endif
                                 </td>
                                 @if ($isOwner)
-                                    <td>
-                                        {{-- One form: number + Receive/Count + Submit. The note box appears when a count does not match. --}}
-                                        <form method="POST" action="{{ route('inventory.stock', $v) }}" class="stock-form" data-current="{{ $v->quantity }}">
-                                            @csrf
-                                            <input type="number" name="quantity" min="0" class="form-control form-control-sm qty" placeholder="Number" required>
-                                            <select name="mode" class="form-select form-select-sm mode">
-                                                <option value="receive">Receive</option>
-                                                <option value="count">Count</option>
-                                            </select>
-                                            <button class="btn btn-sm btn-success">Submit</button>
-                                            <a href="{{ route('inventory.history', ['variant' => $v->id]) }}" class="btn btn-sm btn-outline-secondary" title="Stock history"><i class="bi bi-clock-history"></i></a>
-                                            <input type="text" name="note" maxlength="255" class="form-control form-control-sm note d-none" placeholder="Why does the count differ?">
-                                            <div class="small w-100 text-end text-muted hint"></div>
-                                        </form>
+                                    <td class="text-end">
+                                        <div class="d-inline-flex gap-1">
+                                            {{-- Opens the Receive / Count pop-up for this item --}}
+                                            <button type="button" class="btn btn-sm btn-success btn-icon" title="Receive / Count stock" aria-label="Receive or count stock"
+                                                    data-stock-open
+                                                    data-action="{{ route('inventory.stock', $v) }}"
+                                                    data-product="{{ $v->product->name }}"
+                                                    data-size="{{ $v->size?->name ?? '—' }}"
+                                                    data-color="{{ $v->color?->name ?? '—' }}"
+                                                    data-current="{{ $v->quantity }}">
+                                                <i class="bi bi-clipboard2-plus"></i>
+                                            </button>
+                                            <a href="{{ route('inventory.history', ['variant' => $v->id]) }}" class="btn btn-sm btn-outline-secondary btn-icon" title="Stock history"><i class="bi bi-clock-history"></i></a>
+                                        </div>
                                     </td>
                                 @endif
                             </tr>
                         @empty
-                            <tr><td colspan="6" class="text-center text-muted py-4">No items match.</td></tr>
+                            <tr><td colspan="7" class="text-center text-muted py-4">No items match.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -220,45 +216,107 @@
         <div class="mt-3">{{ $variants->links() }}</div>
     @endif
 
-    {{-- Receive / Count form behaviour --}}
+    {{-- ===== Receive / Count pop-up ===== --}}
     @if ($isOwner && $mode === 'items')
+        <div class="modal fade" id="stock-modal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <form method="POST" class="modal-content" id="stock-form">
+                    @csrf
+                    <input type="hidden" name="mode" id="stock-mode" value="receive">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Receive / Count stock</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="border rounded p-2 mb-3 bg-light">
+                            <div class="fw-semibold" id="stock-product"></div>
+                            <div class="small text-muted"><span id="stock-size"></span> &middot; <span id="stock-color"></span></div>
+                            <div class="mt-1">In stock now: <strong class="fs-5" id="stock-current"></strong></div>
+                        </div>
+
+                        <div class="btn-group w-100 mb-3" role="group" aria-label="What are you doing?">
+                            <input type="radio" class="btn-check" name="stock_mode_pick" id="pick-receive" value="receive" checked>
+                            <label class="btn btn-outline-success" for="pick-receive"><i class="bi bi-box-arrow-in-down"></i> Receive delivery</label>
+                            <input type="radio" class="btn-check" name="stock_mode_pick" id="pick-count" value="count">
+                            <label class="btn btn-outline-success" for="pick-count"><i class="bi bi-clipboard-check"></i> Count stock</label>
+                        </div>
+
+                        <label class="form-label" for="stock-qty" id="stock-qty-label">How many units arrived?</label>
+                        <input type="number" name="quantity" id="stock-qty" min="0" class="form-control form-control-lg" placeholder="Number" required>
+                        <div class="small mt-1" id="stock-hint"></div>
+
+                        <div class="mt-3 d-none" id="stock-note-wrap">
+                            <label class="form-label" for="stock-note">Why does the count differ?</label>
+                            <input type="text" name="note" id="stock-note" maxlength="255" class="form-control" placeholder="e.g. 2 damaged, 1 sold without recording">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success" id="stock-submit">Submit</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <script>
-            document.querySelectorAll('.stock-form').forEach(form => {
-                const current = parseInt(form.dataset.current, 10);
-                const qty = form.querySelector('.qty'), mode = form.querySelector('.mode');
-                const note = form.querySelector('.note'), hint = form.querySelector('.hint');
+            window.addEventListener('load', () => {
+                const modal = new bootstrap.Modal('#stock-modal');
+                const $ = id => document.getElementById(id);
+                const form = $('stock-form'), qty = $('stock-qty'), hint = $('stock-hint');
+                const noteWrap = $('stock-note-wrap'), note = $('stock-note'), modeInput = $('stock-mode');
+                let current = 0;
+
+                const mode = () => modeInput.value;
 
                 function refresh() {
-                    const n = parseInt(qty.value, 10);
-                    const counting = mode.value === 'count';
+                    const n = parseInt(qty.value, 10), counting = mode() === 'count';
                     const mismatch = counting && !isNaN(n) && n !== current;
 
-                    note.classList.toggle('d-none', !mismatch);
+                    noteWrap.classList.toggle('d-none', !mismatch);
                     note.required = mismatch;
+                    $('stock-qty-label').textContent = counting ? 'How many did you physically count?' : 'How many units arrived?';
 
                     if (counting && !isNaN(n)) {
                         hint.textContent = n === current
                             ? 'Matches the system (' + current + ').'
                             : 'System has ' + current + ', you counted ' + n + ' (' + (n > current ? 'over by ' + (n - current) : 'short by ' + (current - n)) + ').';
-                        hint.className = 'small w-100 text-end hint ' + (n === current ? 'text-success' : 'text-danger');
+                        hint.className = 'small mt-1 ' + (n === current ? 'text-success' : 'text-danger');
                     } else if (!counting && !isNaN(n) && n > 0) {
                         hint.textContent = 'Stock will go from ' + current + ' to ' + (current + n) + '.';
-                        hint.className = 'small w-100 text-end hint text-muted';
+                        hint.className = 'small mt-1 text-muted';
                     } else {
                         hint.textContent = '';
                     }
                 }
 
+                document.querySelectorAll('[data-stock-open]').forEach(btn => btn.addEventListener('click', () => {
+                    current = parseInt(btn.dataset.current, 10);
+                    form.action = btn.dataset.action;
+                    $('stock-product').textContent = btn.dataset.product;
+                    $('stock-size').textContent = 'Size: ' + btn.dataset.size;
+                    $('stock-color').textContent = 'Color: ' + btn.dataset.color;
+                    $('stock-current').textContent = current;
+                    $('pick-receive').checked = true;
+                    modeInput.value = 'receive';
+                    qty.value = ''; note.value = '';
+                    refresh();
+                    modal.show();
+                }));
+
+                document.querySelectorAll('input[name="stock_mode_pick"]').forEach(r => r.addEventListener('change', () => { modeInput.value = r.value; refresh(); qty.focus(); }));
                 qty.addEventListener('input', refresh);
-                mode.addEventListener('change', refresh);
+                $('stock-modal').addEventListener('shown.bs.modal', () => qty.focus());
 
                 form.addEventListener('submit', e => {
                     const n = parseInt(qty.value, 10);
-                    if (mode.value === 'receive' && !(n >= 1)) { e.preventDefault(); alert('Enter how many units were received (at least 1).'); return; }
-                    if (mode.value === 'count' && n !== current &&
+                    if (isNaN(n)) { e.preventDefault(); return; }
+                    if (mode() === 'receive' && !(n >= 1)) { e.preventDefault(); alert('Enter how many units were received (at least 1).'); return; }
+                    if (mode() === 'count' && n !== current &&
                         !confirm('The system shows ' + current + ' but you counted ' + n + '.\nSave this count? The difference will be recorded in Stock History.')) {
                         e.preventDefault();
+                        return;
                     }
+                    $('stock-submit').disabled = true;   // no double submit
                 });
             });
         </script>

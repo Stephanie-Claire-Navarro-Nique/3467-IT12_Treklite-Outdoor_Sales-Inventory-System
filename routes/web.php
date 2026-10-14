@@ -5,6 +5,7 @@ use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ImageController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\OptionController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
@@ -56,6 +57,13 @@ Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
     Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
     Route::post('/products/{product}/archive', [ProductController::class, 'archive'])->name('products.archive');
     Route::post('/products/{product}/restore', [ProductController::class, 'restore'])->name('products.restore');
+
+    // Pick-lists for products: brands, categories, sizes, colors (add / edit / disable / delete)
+    Route::get('/options', [OptionController::class, 'index'])->name('options.index');
+    Route::post('/options/{type}', [OptionController::class, 'store'])->name('options.store');
+    Route::put('/options/{type}/{id}', [OptionController::class, 'update'])->whereNumber('id')->name('options.update');
+    Route::post('/options/{type}/{id}/toggle', [OptionController::class, 'toggle'])->whereNumber('id')->name('options.toggle');
+    Route::delete('/options/{type}/{id}', [OptionController::class, 'destroy'])->whereNumber('id')->name('options.destroy');
 
     Route::post('/sales/{sale}/void', [SaleController::class, 'void'])->name('sales.void');
     Route::get('/activity', [ActivityLogController::class, 'index'])->name('activity.index');

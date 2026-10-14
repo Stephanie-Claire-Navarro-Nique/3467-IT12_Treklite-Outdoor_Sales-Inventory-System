@@ -47,18 +47,28 @@
                         </div>
                         <div class="row g-2 mb-2">
                             <div class="col-6">
-                                <label class="form-label">Category</label>
-                                <input type="text" name="category" list="categories" class="form-control" value="{{ old('category', $product->category?->name) }}" placeholder="Slippers, Apparel, Textiles">
-                                <datalist id="categories">
-                                    @foreach (collect(['Slippers', 'Apparel', 'Textiles'])->merge($categories)->unique()->values() as $c)<option value="{{ $c }}">@endforeach
-                                </datalist>
+                                <label class="form-label" for="category-select">Category</label>
+                                <div class="input-group">
+                                    <select name="category" id="category-select" class="form-select">
+                                        <option value="">&mdash; None &mdash;</option>
+                                        @foreach ($categories as $c)<option value="{{ $c }}" @selected(old('category', $product->category?->name) === $c)>{{ $c }}</option>@endforeach
+                                    </select>
+                                    <button type="button" class="btn btn-outline-success" data-quick="categories" title="Add a new category" aria-label="Add a new category"><i class="bi bi-plus-lg"></i></button>
+                                </div>
                             </div>
                             <div class="col-6">
-                                <label class="form-label">Brand</label>
-                                <input type="text" name="brand" list="brands" class="form-control" value="{{ old('brand', $product->brand?->name) }}" placeholder="Pick an existing brand or type a new one">
-                                <datalist id="brands">
-                                    @foreach ($brands as $b)<option value="{{ $b }}">@endforeach
-                                </datalist>
+                                <label class="form-label" for="brand-select">Brand</label>
+                                <div class="input-group">
+                                    <select name="brand" id="brand-select" class="form-select">
+                                        <option value="">&mdash; None &mdash;</option>
+                                        @foreach ($brands as $b)<option value="{{ $b }}" @selected(old('brand', $product->brand?->name) === $b)>{{ $b }}</option>@endforeach
+                                    </select>
+                                    <button type="button" class="btn btn-outline-success" data-quick="brands" title="Add a new brand" aria-label="Add a new brand"><i class="bi bi-plus-lg"></i></button>
+                                </div>
+                            </div>
+                            <div class="col-12 form-text mt-1">
+                                Pick from the list, or press <i class="bi bi-plus-lg"></i> to add a new one.
+                                <a href="{{ route('options.index') }}" target="_blank">Manage lists</a> to rename or delete.
                             </div>
                         </div>
                         <div class="mb-2">
@@ -95,7 +105,9 @@
                             <table class="table table-sm align-middle" id="variants-table">
                                 <thead>
                                     <tr>
-                                        <th style="width:170px">Model</th><th>Size</th><th>Color</th>
+                                        <th style="width:170px">Model</th>
+                                        <th>Size <button type="button" class="btn btn-outline-success btn-sm py-0 px-1 ms-1" data-quick="sizes" title="Add a new size" aria-label="Add a new size"><i class="bi bi-plus-lg"></i></button></th>
+                                        <th>Color <button type="button" class="btn btn-outline-success btn-sm py-0 px-1 ms-1" data-quick="colors" title="Add a new color" aria-label="Add a new color"><i class="bi bi-plus-lg"></i></button></th>
                                         <th style="width:100px">Price</th>
                                         <th style="width:80px">Low at</th>
                                         @if ($editing)<th style="width:90px">Stock</th>@endif
@@ -119,6 +131,9 @@
     <script>
         const EXISTING = @json($variantRows);
         const EDITING = @json((bool) $editing);
+        const LISTS = { sizes: @json($sizes->values()), colors: @json($colors->values()) };
+        const OPTIONS_URL = @json(url('/options'));
+        const CSRF = @json(csrf_token());
 
         const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         const tbody = document.querySelector('#variants-table tbody');
@@ -130,6 +145,15 @@
             document.querySelectorAll('.model-mirror').forEach(el => { el.value = modelInput.value; });
         });
 
+        // A drop-down for the size / color of one row (an unknown saved value is still shown, never lost).
+        function pickerHtml(type, name, value) {
+            const list = LISTS[type].includes(value) || !value ? LISTS[type] : [...LISTS[type], value];
+            return `<select name="${name}" class="form-select form-select-sm ${type}-select" data-type="${type}">
+                <option value="">&mdash; none &mdash;</option>
+                ${list.map(x => `<option value="${esc(x)}" ${x === value ? 'selected' : ''}>${esc(x)}</option>`).join('')}
+            </select>`;
+        }
+
         function addVariant(v = {}) {
             const i = n++;
             const isNew = !v.id;
@@ -139,8 +163,8 @@
                     ${v.id ? `<input type="hidden" name="variants[${i}][id]" value="${esc(v.id)}">` : ''}
                     <input type="text" class="form-control form-control-sm bg-light model-mirror" value="${esc(modelInput.value)}" placeholder="Model" readonly tabindex="-1" aria-label="Model (read-only)">
                 </td>
-                <td><input type="text" name="variants[${i}][size]" class="form-control form-control-sm" value="${esc(v.size)}"></td>
-                <td><input type="text" name="variants[${i}][color]" class="form-control form-control-sm" value="${esc(v.color)}"></td>
+                <td>${pickerHtml('sizes', `variants[${i}][size]`, v.size)}</td>
+                <td>${pickerHtml('colors', `variants[${i}][color]`, v.color)}</td>
                 <td><input type="number" step="0.01" min="0" name="variants[${i}][price]" class="form-control form-control-sm" value="${esc(v.price)}" placeholder="default"></td>
                 <td><input type="number" min="0" name="variants[${i}][low_stock_threshold]" class="form-control form-control-sm" value="${esc(v.low_stock_threshold ?? 5)}" required></td>
                 ${EDITING ? `<td><span class="text-muted">${esc(v.quantity ?? 0)}</span></td>` : ''}
@@ -163,6 +187,92 @@
             img.src = URL.createObjectURL(f);
             img.classList.remove('d-none');
             document.getElementById('photo-placeholder')?.classList.add('d-none');
+        });
+    </script>
+
+    {{-- ===== Quick-add pop-up (brand / category / size / color) ===== --}}
+    <div class="modal fade" id="quick-modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <form class="modal-content" id="quick-form" novalidate>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="quick-title">Add</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger py-2 d-none" id="quick-error"></div>
+                    <label class="form-label" for="quick-name" id="quick-label">Name</label>
+                    <input type="text" class="form-control" id="quick-name" maxlength="255" autocomplete="off" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success" id="quick-save">Add</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        window.addEventListener('load', () => {
+            const NAMES = { brands: 'brand', categories: 'category', sizes: 'size', colors: 'color' };
+            const modal = new bootstrap.Modal('#quick-modal');
+            const nameEl = document.getElementById('quick-name'), errEl = document.getElementById('quick-error'), saveBtn = document.getElementById('quick-save');
+            let type = null;
+            const lastFocused = {};   // which size / color drop-down was used last, so the new entry lands there
+
+            document.addEventListener('focusin', e => { if (e.target.matches?.('.sizes-select, .colors-select')) lastFocused[e.target.dataset.type] = e.target; });
+
+            document.addEventListener('click', e => {
+                const b = e.target.closest('[data-quick]');
+                if (!b) return;
+                type = b.dataset.quick;
+                document.getElementById('quick-title').textContent = 'Add ' + NAMES[type];
+                document.getElementById('quick-label').textContent = 'New ' + NAMES[type] + ' name';
+                nameEl.maxLength = (type === 'sizes' || type === 'colors') ? 50 : 255;
+                nameEl.value = '';
+                errEl.classList.add('d-none');
+                saveBtn.disabled = false;
+                modal.show();
+            });
+            document.getElementById('quick-modal').addEventListener('shown.bs.modal', () => nameEl.focus());
+
+            function insert(select, name, sorted) {
+                if ([...select.options].some(o => o.value === name)) return;
+                const opt = new Option(name, name);
+                const after = sorted ? [...select.options].slice(1).find(o => o.value.localeCompare(name, undefined, { sensitivity: 'base' }) > 0) : null;
+                select.add(opt, after ?? null);
+            }
+
+            document.getElementById('quick-form').addEventListener('submit', async e => {
+                e.preventDefault();
+                errEl.classList.add('d-none');
+                saveBtn.disabled = true;
+                try {
+                    const res = await fetch(OPTIONS_URL + '/' + type, {
+                        method: 'POST',
+                        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
+                        body: JSON.stringify({ name: nameEl.value }),
+                    });
+                    const json = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(json.errors ? Object.values(json.errors).flat().join(' ') : (json.message || 'Could not add it. Please try again.'));
+
+                    const name = json.name;
+                    if (type === 'brands' || type === 'categories') {
+                        const sel = document.getElementById(type === 'brands' ? 'brand-select' : 'category-select');
+                        insert(sel, name, true);
+                        sel.value = name;
+                    } else {
+                        LISTS[type].push(name);
+                        document.querySelectorAll('.' + type + '-select').forEach(sel => insert(sel, name, type === 'colors'));
+                        const target = lastFocused[type] ?? [...document.querySelectorAll('.' + type + '-select')].find(s => s.value === '');
+                        if (target) target.value = name;
+                    }
+                    modal.hide();
+                } catch (err) {
+                    errEl.textContent = err.message;
+                    errEl.classList.remove('d-none');
+                    saveBtn.disabled = false;
+                }
+            });
         });
     </script>
 @endsection

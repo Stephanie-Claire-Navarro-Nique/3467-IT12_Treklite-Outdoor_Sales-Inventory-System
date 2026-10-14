@@ -18,6 +18,10 @@ class ActivityLog extends Model
         'product_archive'  => 'Product archived',
         'product_restore'  => 'Product restored',
         'product_delete'   => 'Product deleted',
+        'option_add'       => 'List item added',
+        'option_edit'      => 'List item edited',
+        'option_toggle'    => 'List item enabled/disabled',
+        'option_delete'    => 'List item deleted',
         'staff_add'        => 'Staff added',
         'staff_edit'       => 'Staff edited',
         'staff_delete'     => 'Staff deleted',
@@ -39,7 +43,8 @@ class ActivityLog extends Model
     {
         return match (true) {
             str_starts_with($action, 'sale_')    => 'sale',
-            str_starts_with($action, 'product_') => 'product',
+            str_starts_with($action, 'product_'),
+            str_starts_with($action, 'option_')  => 'product',
             str_starts_with($action, 'staff_')   => 'user',
             str_starts_with($action, 'backup_')  => 'backup',
             default                              => 'other',

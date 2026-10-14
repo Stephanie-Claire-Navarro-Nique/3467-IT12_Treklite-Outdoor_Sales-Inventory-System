@@ -16,6 +16,7 @@ use App\Support\ImageStore;
 use App\Support\Lookup;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
@@ -61,11 +62,7 @@ class ProductController extends Controller
 
     public function create()
     {
-        return view('products.form', [
-            'product'    => new Product(),
-            'brands'     => Brand::orderBy('name')->pluck('name'),
-            'categories' => Category::orderBy('name')->pluck('name'),
-        ]);
+        return view('products.form', ['product' => new Product()] + $this->pickLists(new Product()));
     }
 
     public function store(Request $request)
@@ -89,11 +86,7 @@ class ProductController extends Controller
     {
         $product->load('variants', 'brand', 'category');
 
-        return view('products.form', [
-            'product'    => $product,
-            'brands'     => Brand::orderBy('name')->pluck('name'),
-            'categories' => Category::orderBy('name')->pluck('name'),
-        ]);
+        return view('products.form', ['product' => $product] + $this->pickLists($product));
     }
 
     public function update(Request $request, Product $product)
@@ -169,19 +162,37 @@ class ProductController extends Controller
         return redirect()->route('products.index', ['status' => 'archived'])->with('status', $product->name . ' is active again.');
     }
 
+    /**
+     * The choices shown in the product form: every enabled entry, plus whatever this product already uses
+     * (so a disabled brand / size / color that is still on an existing product does not disappear from its form).
+     */
+    private function pickLists(Product $product): array
+    {
+        $usedSizes  = $product->exists ? $product->variants->pluck('size_id')->filter() : collect();
+        $usedColors = $product->exists ? $product->variants->pluck('color_id')->filter() : collect();
+
+        return [
+            'brands'     => Brand::where(fn ($w) => $w->where('is_active', true)->orWhere('id', $product->brand_id))->orderBy('name')->pluck('name'),
+            'categories' => Category::where(fn ($w) => $w->where('is_active', true)->orWhere('id', $product->category_id))->orderBy('name')->pluck('name'),
+            'sizes'      => Size::where(fn ($w) => $w->where('is_active', true)->orWhereIn('id', $usedSizes))->orderBy('sort_order')->orderBy('name')->pluck('name'),
+            'colors'     => Color::where(fn ($w) => $w->where('is_active', true)->orWhereIn('id', $usedColors))->orderBy('name')->pluck('name'),
+        ];
+    }
+
     private function validated(Request $request): array
     {
         return $request->validate([
             'name'                         => ['required', 'string', 'max:255'],
-            'category'                     => ['nullable', 'string', 'max:255'],
-            'brand'                        => ['nullable', 'string', 'max:255'],
+            // Brand, category, size and color must already exist in the Lists page (no free typing = no typos).
+            'category'                     => ['nullable', 'string', 'max:255', Rule::exists('categories', 'name')],
+            'brand'                        => ['nullable', 'string', 'max:255', Rule::exists('brands', 'name')],
             'description'                  => ['nullable', 'string', 'max:2000'],
             'price'                        => ['required', 'numeric', 'min:0'],
             'image'                        => ['nullable', 'image', 'max:4096'],
             'variants'                     => ['required', 'array', 'min:1'],
             'variants.*.id'                => ['nullable', 'integer'],
-            'variants.*.size'              => ['nullable', 'string', 'max:50'],
-            'variants.*.color'             => ['nullable', 'string', 'max:50'],
+            'variants.*.size'              => ['nullable', 'string', 'max:50', Rule::exists('sizes', 'name')],
+            'variants.*.color'             => ['nullable', 'string', 'max:50', Rule::exists('colors', 'name')],
             'variants.*.price'             => ['nullable', 'numeric', 'min:0'],
             'variants.*.initial_stock'     => ['nullable', 'integer', 'min:0', 'max:1000000'],
             'variants.*.low_stock_threshold' => ['required', 'integer', 'min:0'],
