@@ -15,13 +15,13 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h3 class="mb-0">Products</h3>
         <div class="d-flex gap-2">
-            <a href="{{ route('options.index') }}" class="btn btn-outline-secondary" title="Add, rename or delete brands, categories, sizes and colors"><i class="bi bi-list-check"></i> Manage Lists</a>
+            <a href="{{ route('options.index') }}" class="btn btn-outline-secondary" title="Add, rename or delete brands, categories, sizes and colors"><i class="bi bi-list-check"></i> Manage Options</a>
             <a href="{{ route('products.create') }}" class="btn btn-success">+ Add Product</a>
         </div>
     </div>
 
     <div class="alert alert-light border small py-2">
-        <i class="bi bi-info-circle"></i> This page is for <strong>creating and editing products</strong> (name, brand, category, price, sizes and colors). Use <strong>Manage Lists</strong> to add, rename or delete the brands, categories, sizes and colors you can pick from.
+        <i class="bi bi-info-circle"></i> This page is for <strong>creating and editing products</strong> (name, brand, category, price, sizes and colors). Use <strong>Manage Options</strong> to add, rename or delete the brands, categories, sizes and colors you can pick from.
         To receive deliveries or count stock, use <strong>Manage Inventory</strong> (<i class="bi bi-box-seam"></i>) on the product.
     </div>
 

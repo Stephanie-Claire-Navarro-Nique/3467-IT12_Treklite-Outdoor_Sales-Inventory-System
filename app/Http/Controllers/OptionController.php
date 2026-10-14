@@ -11,7 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * Owner only: the pick-lists used by products (Brands, Categories, Sizes, Colors).
+ * Owner only: the options used by products (Brands, Categories, Sizes, Colors).
  * Products can only choose from these lists, so a name is never mistyped or duplicated.
  * Add / rename / disable / delete all happen from pop-up forms on one page.
  */
@@ -65,7 +65,7 @@ class OptionController extends Controller
         return $this->done($request, $t['one'] . ' updated.', ['id' => $row->id, 'name' => $row->name]);
     }
 
-    /** Disable = hide from the pick-lists, but products that already use it keep it. Can be switched back on. */
+    /** Disable = hide from the pick options, but products that already use it keep it. Can be switched back on. */
     public function toggle(Request $request, string $type, int $id)
     {
         $t   = $this->type($type);
@@ -153,7 +153,7 @@ class OptionController extends Controller
     private function done(Request $request, string $message, array $extra = []): JsonResponse|\Illuminate\Http\RedirectResponse
     {
         if ($request->expectsJson()) {
-            // Only the Lists page reloads itself afterwards, so only it asks for the message to be kept.
+            // Only the Item Options page reloads itself afterwards, so only it asks for the message to be kept.
             if ($request->header('X-Reload')) {
                 session()->flash('status', $message);
             }

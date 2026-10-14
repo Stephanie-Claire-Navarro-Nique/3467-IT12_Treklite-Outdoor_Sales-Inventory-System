@@ -183,7 +183,7 @@ class ProductController extends Controller
     {
         return $request->validate([
             'name'                         => ['required', 'string', 'max:255'],
-            // Brand, category, size and color must already exist in the Lists page (no free typing = no typos).
+            // Brand, category, size and color must already exist in the Item Options page (no free typing = no typos).
             'category'                     => ['nullable', 'string', 'max:255', Rule::exists('categories', 'name')],
             'brand'                        => ['nullable', 'string', 'max:255', Rule::exists('brands', 'name')],
             'description'                  => ['nullable', 'string', 'max:2000'],

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Product Lists')
+@section('title', 'Item Options')
 
 @section('content')
     <style>
@@ -11,13 +11,13 @@
     </style>
 
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h3 class="mb-0">Product Lists</h3>
+        <h3 class="mb-0">Item Options</h3>
         <a href="{{ route('products.index') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back to Products</a>
     </div>
 
     <div class="alert alert-light border small py-2">
         <i class="bi bi-info-circle"></i>
-        These are the choices offered when you add or edit a product. Products can only <strong>pick</strong> from these lists, so a name is never mistyped or duplicated.
+        These are the choices offered when you add or edit a product. Products can only <strong>pick</strong> from these options, so a name is never mistyped or duplicated.
         <strong>Disable</strong> hides an entry from new products (old products keep it). An entry can only be <strong>deleted</strong> while nothing uses it.
     </div>
 

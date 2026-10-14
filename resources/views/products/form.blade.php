@@ -67,8 +67,8 @@
                                 </div>
                             </div>
                             <div class="col-12 form-text mt-1">
-                                Pick from the list, or press <i class="bi bi-plus-lg"></i> to add a new one.
-                                <a href="{{ route('options.index') }}" target="_blank">Manage lists</a> to rename or delete.
+                                Pick from the options, or press <i class="bi bi-plus-lg"></i> to add a new one.
+                                <a href="{{ route('options.index') }}" target="_blank">Manage options</a> to rename or delete them.
                             </div>
                         </div>
                         <div class="mb-2">
