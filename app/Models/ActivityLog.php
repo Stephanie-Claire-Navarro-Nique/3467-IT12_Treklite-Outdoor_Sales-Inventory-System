@@ -9,7 +9,7 @@ use Throwable;
 /** One line in the Owner's activity trail ("who did what"). */
 class ActivityLog extends Model
 {
-    protected $fillable = ['user_id', 'action', 'description'];
+    protected $fillable = ['user_id', 'action_type', 'action', 'description'];
 
     public const ACTION_LABELS = [
         'sale_void'        => 'Sale voided',
@@ -25,12 +25,34 @@ class ActivityLog extends Model
         'backup_restore'   => 'Backup restored',
     ];
 
+    /** Group of each action (saved in activity_logs.action_type); the Activity Log can color the entries by it. */
+    public const ACTION_TYPES = [
+        'sale'    => 'Sales',
+        'product' => 'Products',
+        'user'    => 'Accounts',
+        'backup'  => 'Backups',
+        'other'   => 'Other',
+    ];
+
+    /** Which group an action belongs to, from its code (sale_void -> sale, staff_add -> user, ...). */
+    public static function typeOf(string $action): string
+    {
+        return match (true) {
+            str_starts_with($action, 'sale_')    => 'sale',
+            str_starts_with($action, 'product_') => 'product',
+            str_starts_with($action, 'staff_')   => 'user',
+            str_starts_with($action, 'backup_')  => 'backup',
+            default                              => 'other',
+        };
+    }
+
     /** Writes one line. It must never break the action being logged, so any error is ignored. */
     public static function record(string $action, string $description): void
     {
         try {
             static::create([
                 'user_id'     => auth()->id(),
+                'action_type' => self::typeOf($action),
                 'action'      => $action,
                 'description' => mb_substr($description, 0, 500),
             ]);

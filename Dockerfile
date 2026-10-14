@@ -7,14 +7,21 @@ RUN apt-get update && apt-get install -y \
     curl \
     libpq-dev \
     libzip-dev \
+    libpng-dev \
+    libjpeg-dev \
+    libwebp-dev \
     libonig-dev \
     libxml2-dev \
     zip \
-    && docker-php-ext-install pdo pdo_mysql pdo_pgsql zip mbstring xml \
+    && docker-php-ext-configure gd --with-jpeg --with-webp \
+    && docker-php-ext-install pdo pdo_mysql pdo_pgsql zip mbstring xml gd exif \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 RUN a2enmod rewrite
+
+# PHP's default upload limit is 2 MB, which is too small for phone photos and for backup files that now contain the photos.
+RUN printf 'upload_max_filesize=100M\npost_max_size=110M\nmemory_limit=256M\n' > /usr/local/etc/php/conf.d/treklite-uploads.ini
 
 # Silence the "ServerName" warning
 RUN echo "ServerName localhost" > /etc/apache2/conf-available/servername.conf \

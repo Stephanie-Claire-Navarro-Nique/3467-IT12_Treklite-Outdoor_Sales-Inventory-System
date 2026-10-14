@@ -48,7 +48,7 @@ class BackupController extends Controller
     public function restore(Request $request)
     {
         $request->validate([
-            'backup_file'  => ['required', 'file', 'max:20480'],
+            'backup_file'  => ['required', 'file', 'max:102400'],
             'password'     => ['required'],
             'confirmation' => ['required', 'in:RESTORE'],
         ], [

@@ -3,12 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Storage;
 
 class Product extends Model
 {
-    protected $fillable = ['name', 'category', 'brand', 'description', 'image_path', 'price', 'is_active'];
+    protected $fillable = ['name', 'image_id', 'brand_id', 'category_id', 'description', 'price', 'is_active'];
 
     protected $casts = ['price' => 'decimal:2', 'is_active' => 'boolean'];
 
@@ -23,9 +23,25 @@ class Product extends Model
         return $this->hasMany(ProductVariant::class);
     }
 
+    public function brand(): BelongsTo
+    {
+        return $this->belongsTo(Brand::class);
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    public function image(): BelongsTo
+    {
+        return $this->belongsTo(Image::class);
+    }
+
+    /** Link to the photo kept in the database (null = no photo, the placeholder is shown). */
     public function getImageUrlAttribute(): ?string
     {
-        return $this->image_path ? Storage::disk('public')->url($this->image_path) : null;
+        return $this->image_id ? route('images.show', $this->image_id) : null;
     }
 
     public function getTotalStockAttribute(): int

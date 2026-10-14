@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Sale;
+use App\Models\SaleVoid;
 use App\Models\StockMovement;
 use App\Models\ActivityLog;
 use App\Models\User;
@@ -78,7 +79,7 @@ class UserController extends Controller
     {
         $this->staffOnly($user);
 
-        if (Sale::where('user_id', $user->id)->exists() || StockMovement::where('user_id', $user->id)->exists()) {
+        if (Sale::where('user_id', $user->id)->exists() || StockMovement::where('user_id', $user->id)->exists() || SaleVoid::where('voided_by', $user->id)->exists()) {
             return back()->withErrors(['user' => $user->name . ' already has recorded sales or stock changes, so the account cannot be deleted. Deactivate it instead.']);
         }
 

@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Sale;
-use App\Models\ActivityLog;
+use App\Models\SaleVoid;
 use App\Models\StockMovement;
 use App\Models\User;
+use App\Support\ImageStore;
 use Illuminate\Support\Carbon;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
@@ -24,7 +27,7 @@ class SaleController extends Controller
 
         // Voided sales are listed (with a badge) but never counted in the totals.
         $summary     = (clone $query)->active()->selectRaw('COUNT(*) as cnt, COALESCE(SUM(total_amount), 0) as total')->first();
-        $voidedCount = (clone $query)->whereNotNull('voided_at')->count();
+        $voidedCount = (clone $query)->whereHas('voidRecord')->count();
         $sales    = $query->with('user')->latest('sold_at')->paginate(20)->withQueryString();
         $cashiers = $isOwner ? User::orderBy('name')->get(['id', 'name']) : collect();
 
@@ -104,7 +107,7 @@ class SaleController extends Controller
 
     public function create()
     {
-        $products = Product::with('variants')
+        $products = Product::with('variants', 'brand', 'category')
             ->where('is_active', true)
             ->whereHas('variants')
             ->orderBy('name')
@@ -112,20 +115,21 @@ class SaleController extends Controller
             ->map(fn ($p) => [
                 'id'       => $p->id,
                 'name'     => $p->name,
-                'category' => $p->category,
-                'brand'    => $p->brand,
+                'category' => $p->category?->name,
+                'brand'    => $p->brand?->name,
                 'image'    => $p->image_url,
                 'variants' => $p->variants->map(fn ($v) => [
                     'id'    => $v->id,
-                    'size'  => $v->size,
-                    'color' => $v->color,
+                    'size'  => $v->size?->name,
+                    'color' => $v->color?->name,
                     'label' => $v->label,
                     'price' => (float) ($v->price ?? $p->price),
                     'stock' => (int) $v->quantity,
                 ])->values(),
             ])->values();
 
-        $categories = Product::where('is_active', true)->whereNotNull('category')->distinct()->orderBy('category')->pluck('category');
+        $categories = Category::whereIn('id', Product::where('is_active', true)->whereNotNull('category_id')->select('category_id'))
+            ->orderBy('name')->pluck('name');
 
         // Optional: put your shop's static QR Ph / GCash QR image here to show it at checkout.
         $paymentQr = file_exists(public_path('images/payment-qr.png')) ? asset('images/payment-qr.png') : null;
@@ -214,7 +218,8 @@ class SaleController extends Controller
             $prefix = 'INV-' . now()->format('Ymd');
             $last   = Sale::where('invoice_number', 'like', $prefix . '-%')->lockForUpdate()->max('invoice_number');
             $seq    = $last ? ((int) substr($last, -4)) + 1 : 1;
-            $proof  = $request->file('payment_proof')?->store('payment-proofs', 'public');
+            // The payment photo is saved inside the database (not as a file on the server), so it is not lost on restart.
+            $proofId = $request->hasFile('payment_proof') ? ImageStore::fromUpload($request->file('payment_proof'), 1600) : null;
 
             $sale = null;
             for ($try = 0; $try < 5; $try++) {
@@ -227,7 +232,7 @@ class SaleController extends Controller
                         'customer_contact'   => $data['customer_contact'] ?? null,
                         'payment_method'     => $data['payment_method'],
                         'payment_reference'  => $reference,
-                        'payment_proof_path' => $proof,
+                        'payment_proof_id'   => $proofId,
                         'payment_proof_hash' => $proofHash,
                         'amount_tendered'    => $tendered,
                         'change_amount'      => max(0, $tendered - $total),
@@ -324,10 +329,12 @@ class SaleController extends Controller
                 ]);
             }
 
-            $sale->update([
-                'voided_at'   => now(),
+            // The void is kept in its own table: which sale, who voided it, when and why.
+            SaleVoid::create([
+                'sale_id'     => $sale->id,
                 'voided_by'   => auth()->id(),
                 'void_reason' => $data['reason'],
+                'voided_at'   => now(),
             ]);
 
             ActivityLog::record('sale_void', 'Voided ' . $sale->invoice_number . ' (₱' . number_format((float) $sale->total_amount, 2) . '). Reason: ' . $data['reason']);

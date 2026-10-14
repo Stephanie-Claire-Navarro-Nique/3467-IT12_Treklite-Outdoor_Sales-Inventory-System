@@ -19,7 +19,7 @@ class ReportController extends Controller
             ->get();
 
         // Voided sales are not counted in the report, but the Owner is told how many were left out.
-        $voided      = Sale::whereNotNull('voided_at')->whereBetween('sold_at', [$from, $to]);
+        $voided      = Sale::whereHas('voidRecord')->whereBetween('sold_at', [$from, $to]);
         $voidedCount = (clone $voided)->count();
         $voidedTotal = (float) (clone $voided)->sum('total_amount');
 

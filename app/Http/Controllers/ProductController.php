@@ -3,13 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
+use App\Models\Brand;
+use App\Models\Category;
+use App\Models\Color;
+use App\Models\Image;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\SaleItem;
+use App\Models\Size;
 use App\Models\StockMovement;
+use App\Support\ImageStore;
+use App\Support\Lookup;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
@@ -22,22 +28,22 @@ class ProductController extends Controller
         $category = trim((string) $request->query('category'));
         $status   = in_array($request->query('status'), ['archived', 'all'], true) ? $request->query('status') : 'active';
 
-        $products = Product::with('variants')
+        $products = Product::with('variants', 'brand', 'category')
             ->when($status === 'active', fn ($w) => $w->where('is_active', true))
             ->when($status === 'archived', fn ($w) => $w->where('is_active', false))
             ->when($q !== '', fn ($w) => $w->where(fn ($s) => $s
                 ->where('name', 'like', "%{$q}%")
-                ->orWhere('brand', 'like', "%{$q}%")
-                ->orWhere('category', 'like', "%{$q}%")))
-            ->when($brand === InventoryController::NO_BRAND, fn ($w) => $w->where(fn ($s) => $s->whereNull('brand')->orWhere('brand', '')))
-            ->when($brand !== '' && $brand !== InventoryController::NO_BRAND, fn ($w) => $w->where('brand', $brand))
-            ->when($category !== '', fn ($w) => $w->where('category', $category))
+                ->orWhereHas('brand', fn ($b) => $b->where('name', 'like', "%{$q}%"))
+                ->orWhereHas('category', fn ($c) => $c->where('name', 'like', "%{$q}%"))))
+            ->when($brand === InventoryController::NO_BRAND, fn ($w) => $w->whereNull('brand_id'))
+            ->when($brand !== '' && $brand !== InventoryController::NO_BRAND, fn ($w) => $w->whereHas('brand', fn ($b) => $b->where('name', $brand)))
+            ->when($category !== '', fn ($w) => $w->whereHas('category', fn ($c) => $c->where('name', $category)))
             ->orderBy('name')
             ->paginate(20)
             ->withQueryString();
 
-        $brands     = $this->distinct('brand');
-        $categories = $this->distinct('category');
+        $brands     = Brand::orderBy('name')->pluck('name');
+        $categories = Category::orderBy('name')->pluck('name');
 
         // Products with no sales and no stock records at all (e.g. created by mistake) can be deleted.
         $variantRows = ProductVariant::whereIn('product_id', $products->pluck('id'))->get(['id', 'product_id']);
@@ -57,15 +63,9 @@ class ProductController extends Controller
     {
         return view('products.form', [
             'product'    => new Product(),
-            'brands'     => $this->distinct('brand'),
-            'categories' => $this->distinct('category'),
+            'brands'     => Brand::orderBy('name')->pluck('name'),
+            'categories' => Category::orderBy('name')->pluck('name'),
         ]);
-    }
-
-    /** Existing values of a product column, used for filter drop-downs and typing suggestions. */
-    private function distinct(string $column)
-    {
-        return Product::whereNotNull($column)->where($column, '!=', '')->distinct()->orderBy($column)->pluck($column);
     }
 
     public function store(Request $request)
@@ -82,17 +82,17 @@ class ProductController extends Controller
         ActivityLog::record('product_add', 'Added product ' . $product->name . ' (price ₱' . number_format((float) $product->price, 2) . ', ' . count($data['variants']) . ' size/color row(s)).');
 
         return redirect()->route('inventory.index', ['product' => $product->id])
-            ->with('status', 'Product added with 0 stock. Use Receive below to add its first stock.');
+            ->with('status', 'Product added. Use Receive below to add its stock.');
     }
 
     public function edit(Product $product)
     {
-        $product->load('variants');
+        $product->load('variants', 'brand', 'category');
 
         return view('products.form', [
             'product'    => $product,
-            'brands'     => $this->distinct('brand'),
-            'categories' => $this->distinct('category'),
+            'brands'     => Brand::orderBy('name')->pluck('name'),
+            'categories' => Category::orderBy('name')->pluck('name'),
         ]);
     }
 
@@ -103,12 +103,16 @@ class ProductController extends Controller
         $oldPrice = (float) $product->price;
 
         DB::transaction(function () use ($request, $data, $product) {
-            $fields = $this->productFields($request, $data);
-            if (isset($fields['image_path']) && $product->image_path) {
-                Storage::disk('public')->delete($product->image_path);
-            }
+            $oldImageId = $product->image_id;
+            $fields     = $this->productFields($request, $data);
+
             $product->update($fields);
             $this->saveVariants($product, $data['variants']);
+
+            // A new photo replaces the old one, so the old photo is removed from the database.
+            if (isset($fields['image_id']) && $oldImageId && $oldImageId !== $fields['image_id']) {
+                Image::whereKey($oldImageId)->delete();
+            }
         });
 
         $note = '';
@@ -144,11 +148,12 @@ class ProductController extends Controller
         $name = $product->name;
 
         DB::transaction(function () use ($product) {
+            $imageId = $product->image_id;
             $product->variants()->delete();
-            if ($product->image_path) {
-                Storage::disk('public')->delete($product->image_path);
-            }
             $product->delete();
+            if ($imageId) {
+                Image::whereKey($imageId)->delete();
+            }
         });
 
         ActivityLog::record('product_delete', 'Deleted product ' . $name . ' (it had no sales or stock records).');
@@ -178,16 +183,25 @@ class ProductController extends Controller
             'variants.*.size'              => ['nullable', 'string', 'max:50'],
             'variants.*.color'             => ['nullable', 'string', 'max:50'],
             'variants.*.price'             => ['nullable', 'numeric', 'min:0'],
+            'variants.*.initial_stock'     => ['nullable', 'integer', 'min:0', 'max:1000000'],
             'variants.*.low_stock_threshold' => ['required', 'integer', 'min:0'],
         ]);
     }
 
+    /**
+     * Fields saved on the product. Brand and category are typed names: an existing one is reused,
+     * a new one is added to the brands / categories table, and empty means "none".
+     */
     private function productFields(Request $request, array $data): array
     {
-        $fields = collect($data)->only(['name', 'category', 'brand', 'description', 'price'])->all();
+        $fields = collect($data)->only(['name', 'description', 'price'])->all();
 
+        $fields['brand_id']    = Lookup::id(Brand::class, $data['brand'] ?? null);
+        $fields['category_id'] = Lookup::id(Category::class, $data['category'] ?? null);
+
+        // The photo is saved inside the database (not as a file on the server), so it is not lost on restart.
         if ($request->hasFile('image')) {
-            $fields['image_path'] = $request->file('image')->store('products', 'public');
+            $fields['image_id'] = ImageStore::fromUpload($request->file('image'), 1200);
         }
 
         return $fields;
@@ -209,8 +223,8 @@ class ProductController extends Controller
             $id = $row['id'] ?? null;
 
             $attrs = [
-                'size'                => $row['size'] ?? null,
-                'color'               => $row['color'] ?? null,
+                'size_id'             => Lookup::id(Size::class, $row['size'] ?? null),
+                'color_id'            => Lookup::id(Color::class, $row['color'] ?? null),
                 'price'               => ($row['price'] ?? '') === '' ? null : $row['price'],
                 'low_stock_threshold' => $row['low_stock_threshold'],
             ];
@@ -218,9 +232,24 @@ class ProductController extends Controller
             if ($id) {
                 // Quantity is never edited here; use Inventory > Receive / Adjust so every change is logged.
                 $product->variants()->whereKey($id)->update($attrs);
-            } else {
-                // Every item starts at 0. The first stock is added in Inventory > Receive, so it is logged like all other stock.
-                $product->variants()->create($attrs + ['quantity' => 0]);
+                continue;
+            }
+
+            // A new item starts with its initial stock (0 if none is entered). The initial stock is logged
+            // in Stock History like any other delivery.
+            $initial = (int) ($row['initial_stock'] ?? 0);
+            $variant = $product->variants()->create($attrs + ['initial_stock' => $initial, 'quantity' => $initial]);
+
+            if ($initial > 0) {
+                StockMovement::create([
+                    'variant_id'      => $variant->id,
+                    'user_id'         => auth()->id(),
+                    'type'            => 'receive',
+                    'quantity_before' => 0,
+                    'quantity_change' => $initial,
+                    'quantity_after'  => $initial,
+                    'note'            => 'Initial stock',
+                ]);
             }
         }
     }

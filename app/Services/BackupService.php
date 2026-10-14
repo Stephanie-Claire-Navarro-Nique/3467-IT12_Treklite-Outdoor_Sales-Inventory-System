@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\ImageStore;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -11,11 +12,25 @@ use Throwable;
 /**
  * Database backup and restore without needing mysqldump on the server.
  * A backup is one JSON file holding every row of the business tables.
- * Uploaded photos are NOT inside the file (they are files, not database rows).
+ * Product and payment photos live in the `images` table, so they are inside the file too
+ * (as text, because a JSON file cannot hold raw picture bytes).
  */
 class BackupService
 {
-    public const TABLES = ['users', 'products', 'product_variants', 'sales', 'sale_items', 'stock_movements'];
+    /** Parents first, then the tables that point to them. */
+    public const TABLES = [
+        'users', 'categories', 'brands', 'sizes', 'colors', 'images', 'products', 'product_variants',
+        'sales', 'voids', 'sale_items', 'stock_movements', 'activity_logs',
+    ];
+
+    /** Backups made before the database update (version 1) have a different structure and cannot be restored. */
+    private const VERSION = 2;
+
+    /** Photo bytes are saved as base64 text inside the JSON file. */
+    private const BINARY = ['images' => 'image_data'];
+
+    /** Photos are inserted a few at a time, so one insert never gets bigger than the database allows. */
+    private const CHUNK = ['images' => 5];
 
     private const DIR = 'backups';
 
@@ -24,13 +39,21 @@ class BackupService
     {
         $payload = [
             'format'     => 'treklite-backup',
-            'version'    => 1,
+            'version'    => self::VERSION,
             'created_at' => now()->toIso8601String(),
             'tables'     => [],
         ];
 
         foreach (self::TABLES as $table) {
-            $payload['tables'][$table] = DB::table($table)->orderBy('id')->get()->map(fn ($row) => (array) $row)->all();
+            $payload['tables'][$table] = DB::table($table)->orderBy('id')->get()->map(function ($row) use ($table) {
+                $row = (array) $row;
+                if (isset(self::BINARY[$table])) {
+                    $col       = self::BINARY[$table];
+                    $row[$col] = base64_encode(is_resource($row[$col]) ? (string) stream_get_contents($row[$col]) : (string) $row[$col]);
+                }
+
+                return $row;
+            })->all();
         }
 
         $name = 'treklite-backup-' . now()->format('Ymd-His') . $suffix . '.json';
@@ -80,6 +103,10 @@ class BackupService
             throw new InvalidArgumentException('This is not a valid Treklite backup file.');
         }
 
+        if (($data['version'] ?? 1) < self::VERSION) {
+            throw new InvalidArgumentException('This backup was made before the database update (photos, brands, categories, sizes, colors), so it cannot be restored. Create a new backup.');
+        }
+
         // Validate everything BEFORE touching the database.
         foreach (self::TABLES as $table) {
             if (! isset($data['tables'][$table]) || ! is_array($data['tables'][$table])) {
@@ -103,8 +130,16 @@ class BackupService
                 DB::table($table)->delete();
             }
             foreach (self::TABLES as $table) {
-                foreach (array_chunk($data['tables'][$table], 200) as $chunk) {
-                    DB::table($table)->insert($chunk);
+                foreach (array_chunk($data['tables'][$table], self::CHUNK[$table] ?? 200) as $chunk) {
+                    if (isset(self::BINARY[$table])) {
+                        // Photos go in one row at a time as binary, exactly as they were.
+                        foreach ($chunk as $row) {
+                            $row[self::BINARY[$table]] = base64_decode((string) $row[self::BINARY[$table]], true);
+                            ImageStore::insertRow($row);
+                        }
+                    } else {
+                        DB::table($table)->insert($chunk);
+                    }
                 }
                 $counts[$table] = count($data['tables'][$table]);
             }

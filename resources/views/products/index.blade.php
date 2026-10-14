@@ -85,10 +85,10 @@
                                 @unless ($p->is_active) <span class="badge text-bg-warning">Archived</span> @endunless
                             </td>
                             <td>
-                                @if ($p->brand)<span class="badge text-bg-dark">{{ $p->brand }}</span>@else<span class="badge text-bg-light border text-muted">No brand</span>@endif
+                                @if ($p->brand)<span class="badge text-bg-dark">{{ $p->brand->name }}</span>@else<span class="badge text-bg-light border text-muted">No brand</span>@endif
                             </td>
                             <td>
-                                @if ($p->category)<span class="badge text-bg-secondary">{{ $p->category }}</span>@else<span class="text-muted">&mdash;</span>@endif
+                                @if ($p->category)<span class="badge text-bg-secondary">{{ $p->category->name }}</span>@else<span class="text-muted">&mdash;</span>@endif
                             </td>
                             <td class="text-end">₱{{ number_format($p->price, 2) }}</td>
                             <td class="text-center">{{ $p->variants->count() }}</td>

@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
+use App\Models\Color;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\Size;
 use App\Models\StockMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -36,8 +39,9 @@ class InventoryController extends Controller
         if (! $filtering) {
             $brands = Product::query()
                 ->where('products.is_active', true)
+                ->leftJoin('brands as b', 'b.id', '=', 'products.brand_id')
                 ->leftJoin('product_variants as v', 'v.product_id', '=', 'products.id')
-                ->selectRaw("COALESCE(NULLIF(TRIM(products.brand), ''), '') as brand_name")
+                ->selectRaw("COALESCE(b.name, '') as brand_name")
                 ->selectRaw('COUNT(DISTINCT products.id) as product_count')
                 ->selectRaw('COALESCE(SUM(v.quantity), 0) as units')
                 ->selectRaw('COALESCE(SUM(CASE WHEN v.id IS NOT NULL AND v.quantity <= 0 THEN 1 ELSE 0 END), 0) as out_count')
@@ -60,28 +64,29 @@ class InventoryController extends Controller
             ->when($brand !== '', fn ($w) => $w->whereHas('product', fn ($p) => $this->brandFilter($p, $brand)));
 
         // Options for the filter drop-downs come from what is inside the current brand / product.
-        $sizes  = (clone $scope)->whereNotNull('size')->where('size', '!=', '')->distinct()->orderBy('size')->pluck('size');
-        $colors = (clone $scope)->whereNotNull('color')->where('color', '!=', '')->distinct()->orderBy('color')->pluck('color');
-        $categories = Product::query()
+        $sizes  = Size::whereIn('id', (clone $scope)->whereNotNull('size_id')->select('size_id'))->orderBy('sort_order')->orderBy('name')->pluck('name');
+        $colors = Color::whereIn('id', (clone $scope)->whereNotNull('color_id')->select('color_id'))->orderBy('name')->pluck('name');
+        $categories = Category::whereIn('id', Product::query()
             ->where('is_active', true)
             ->when($product, fn ($w) => $w->whereKey($product->id))
             ->when($brand !== '', fn ($w) => $this->brandFilter($w, $brand))
-            ->whereNotNull('category')->where('category', '!=', '')
-            ->distinct()->orderBy('category')->pluck('category');
+            ->whereNotNull('category_id')
+            ->select('category_id'))
+            ->orderBy('name')->pluck('name');
 
-        $variants = (clone $scope)->with('product')
-            ->when($category !== '', fn ($w) => $w->whereHas('product', fn ($p) => $p->where('category', $category)))
-            ->when($size !== '', fn ($w) => $w->where('size', $size))
-            ->when($color !== '', fn ($w) => $w->where('color', $color))
+        $variants = (clone $scope)->with('product.brand', 'product.category')
+            ->when($category !== '', fn ($w) => $w->whereHas('product.category', fn ($c) => $c->where('name', $category)))
+            ->when($size !== '', fn ($w) => $w->whereHas('size', fn ($z) => $z->where('name', $size)))
+            ->when($color !== '', fn ($w) => $w->whereHas('color', fn ($c) => $c->where('name', $color)))
             ->when($status === 'out', fn ($w) => $w->where('quantity', '<=', 0))
             ->when($status === 'low', fn ($w) => $w->where('quantity', '>', 0)->whereColumn('quantity', '<=', 'low_stock_threshold'))
             ->when($status === 'ok', fn ($w) => $w->whereColumn('quantity', '>', 'low_stock_threshold'))
             ->when($q !== '', fn ($w) => $w->where(function ($s) use ($q) {
-                $s->where('size', 'like', "%{$q}%")
-                  ->orWhere('color', 'like', "%{$q}%")
+                $s->whereHas('size', fn ($z) => $z->where('name', 'like', "%{$q}%"))
+                  ->orWhereHas('color', fn ($c) => $c->where('name', 'like', "%{$q}%"))
                   ->orWhereHas('product', fn ($p) => $p->where('name', 'like', "%{$q}%")
-                      ->orWhere('brand', 'like', "%{$q}%")
-                      ->orWhere('category', 'like', "%{$q}%"));
+                      ->orWhereHas('brand', fn ($b) => $b->where('name', 'like', "%{$q}%"))
+                      ->orWhereHas('category', fn ($c) => $c->where('name', 'like', "%{$q}%")));
             }))
             ->orderBy('product_id')
             ->orderBy('id')
@@ -185,7 +190,7 @@ class InventoryController extends Controller
     private function brandFilter($query, string $brand)
     {
         return $brand === self::NO_BRAND
-            ? $query->where(fn ($w) => $w->whereNull('brand')->orWhere('brand', ''))
-            : $query->where('brand', $brand);
+            ? $query->whereNull('brand_id')
+            : $query->whereHas('brand', fn ($b) => $b->where('name', $brand));
     }
 }

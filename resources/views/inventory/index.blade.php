@@ -178,7 +178,7 @@
                                 </td>
                                 <td>
                                     {{ $v->product->name }}
-                                    <div class="small text-muted">{{ collect([$v->product->brand, $v->product->category])->filter()->implode(' · ') }}</div>
+                                    <div class="small text-muted">{{ collect([$v->product->brand?->name, $v->product->category?->name])->filter()->implode(' · ') }}</div>
                                 </td>
                                 <td>{{ $v->label }}</td>
                                 <td class="text-end fw-semibold">{{ $v->quantity }}</td>

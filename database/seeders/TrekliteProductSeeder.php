@@ -2,9 +2,12 @@
 
 namespace Database\Seeders;
 
+use App\Models\Brand;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\StockMovement;
 use App\Models\User;
+use App\Support\Lookup;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -54,13 +57,18 @@ class TrekliteProductSeeder extends Seeder
 
             DB::transaction(function () use ($owner, $brand, $name, $category, $price) {
                 $product = Product::create([
-                    'name' => $name, 'brand' => $brand, 'category' => $category, 'price' => $price, 'is_active' => true,
+                    'name'        => $name,
+                    'brand_id'    => Lookup::id(Brand::class, $brand),
+                    'category_id' => Lookup::id(Category::class, $category),
+                    'price'       => $price,
+                    'is_active'   => true,
                 ]);
 
                 $variant = $product->variants()->create([
-                    'size'                => null,
-                    'color'               => null,
+                    'size_id'             => null,
+                    'color_id'            => null,
                     'price'               => null,
+                    'initial_stock'       => self::OPENING_STOCK,
                     'quantity'            => self::OPENING_STOCK,
                     'low_stock_threshold' => self::LOW_STOCK_AT,
                 ]);

@@ -2,9 +2,14 @@
 
 namespace Database\Seeders;
 
+use App\Models\Brand;
+use App\Models\Category;
+use App\Models\Color;
 use App\Models\Product;
+use App\Models\Size;
 use App\Models\StockMovement;
 use App\Models\User;
+use App\Support\Lookup;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -89,16 +94,21 @@ class DemoDataSeeder extends Seeder
 
             DB::transaction(function () use ($owner, $name, $category, $brand, $price, $variants) {
                 $product = Product::create([
-                    'name' => $name, 'category' => $category, 'brand' => $brand, 'price' => $price, 'is_active' => true,
+                    'name'        => $name,
+                    'category_id' => Lookup::id(Category::class, $category),
+                    'brand_id'    => Lookup::id(Brand::class, $brand),
+                    'price'       => $price,
+                    'is_active'   => true,
                 ]);
 
                 foreach ($variants as $row) {
                     [$size, $color, $qty, $low] = $row;
 
                     $variant = $product->variants()->create([
-                        'size'                => $size,
-                        'color'               => $color,
+                        'size_id'             => Lookup::id(Size::class, $size),
+                        'color_id'            => Lookup::id(Color::class, $color),
                         'price'               => $row[4] ?? null,
+                        'initial_stock'       => $qty,
                         'quantity'            => $qty,
                         'low_stock_threshold' => $low,
                     ]);

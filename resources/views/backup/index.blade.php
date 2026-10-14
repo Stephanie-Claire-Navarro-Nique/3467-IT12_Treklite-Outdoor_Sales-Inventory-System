@@ -11,14 +11,14 @@
             <div class="card shadow-sm mb-3">
                 <div class="card-header fw-bold"><i class="bi bi-cloud-arrow-down"></i> Create a backup</div>
                 <div class="card-body">
-                    <p class="mb-2">A backup saves all users, products, variants, stock history and sales in one file.
+                    <p class="mb-2">A backup saves all users, products (with their photos), brands, categories, sizes, colors, stock history, sales, voids and the activity log in one file.
                         Create one at the end of each business day, then <strong>download it and keep a copy on an external drive</strong>.</p>
                     <form method="POST" action="{{ route('backup.store') }}">
                         @csrf
                         <button class="btn btn-success"><i class="bi bi-database-add"></i> Create backup now</button>
                     </form>
                     <div class="small text-muted mt-2">
-                        Product and payment photos are saved separately and are not inside the backup file.
+                        Product and payment photos are saved inside the database, so they are inside the backup file too (the file can be large when there are many photos).
                         Copies stored on the server may be removed when the system is redeployed, so always download one.
                     </div>
                 </div>

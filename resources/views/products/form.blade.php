@@ -5,8 +5,8 @@
 
     $variantRows = old('variants', $product->variants->map(fn ($v) => [
         'id'                  => $v->id,
-        'size'                => $v->size,
-        'color'               => $v->color,
+        'size'                => $v->size?->name,
+        'color'               => $v->color?->name,
         'price'               => $v->price,
         'low_stock_threshold' => $v->low_stock_threshold,
         'quantity'            => $v->quantity,
@@ -48,14 +48,14 @@
                         <div class="row g-2 mb-2">
                             <div class="col-6">
                                 <label class="form-label">Category</label>
-                                <input type="text" name="category" list="categories" class="form-control" value="{{ old('category', $product->category) }}" placeholder="Slippers, Apparel, Textiles">
+                                <input type="text" name="category" list="categories" class="form-control" value="{{ old('category', $product->category?->name) }}" placeholder="Slippers, Apparel, Textiles">
                                 <datalist id="categories">
                                     @foreach (collect(['Slippers', 'Apparel', 'Textiles'])->merge($categories)->unique()->values() as $c)<option value="{{ $c }}">@endforeach
                                 </datalist>
                             </div>
                             <div class="col-6">
                                 <label class="form-label">Brand</label>
-                                <input type="text" name="brand" list="brands" class="form-control" value="{{ old('brand', $product->brand) }}" placeholder="Pick an existing brand or type a new one">
+                                <input type="text" name="brand" list="brands" class="form-control" value="{{ old('brand', $product->brand?->name) }}" placeholder="Pick an existing brand or type a new one">
                                 <datalist id="brands">
                                     @foreach ($brands as $b)<option value="{{ $b }}">@endforeach
                                 </datalist>

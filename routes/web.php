@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ImageController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
@@ -33,6 +34,9 @@ Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/profile/password', [ProfileController::class, 'password'])->name('profile.password');
+
+    // Photos kept in the database (product photos, payment confirmations)
+    Route::get('/images/{image}', [ImageController::class, 'show'])->whereNumber('image')->name('images.show');
 
     Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');   // stock lookup
     Route::get('/sales/new', [SaleController::class, 'create'])->name('sales.create');
