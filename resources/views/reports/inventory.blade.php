@@ -11,6 +11,8 @@
         }
     </style>
 
+    @include('reports.partials.styles')
+
     @php
         // Every link on this page keeps the chosen period, date and the low-stock switch.
         $link = fn (array $over = []) => route('reports.inventory', array_filter(array_merge([
@@ -33,33 +35,41 @@
     </ul>
 
     {{-- Filter: Day / Week / Month / Year --}}
-    <div class="d-flex flex-wrap align-items-center gap-2 mb-3 no-print">
-        <div class="btn-group" role="group" aria-label="Report period">
-            @foreach ($periods as $key => $label)
-                <a href="{{ $link(['period' => $key]) }}"
-                   class="btn btn-sm {{ $period === $key ? 'btn-success' : 'btn-outline-success' }}">{{ $label }}</a>
-            @endforeach
+    <div class="filter-bar mb-3 no-print">
+        <div class="filter-group">
+            <span class="filter-label">Period</span>
+            <div class="btn-group" role="group" aria-label="Report period">
+                @foreach ($periods as $key => $label)
+                    <a href="{{ $link(['period' => $key]) }}"
+                       class="btn btn-sm {{ $period === $key ? 'btn-success' : 'btn-outline-success' }}">{{ $label }}</a>
+                @endforeach
+            </div>
         </div>
 
-        <div class="btn-group" role="group" aria-label="Move period">
-            <a href="{{ $link(['date' => $prevDate->toDateString()]) }}" class="btn btn-sm btn-outline-secondary" title="Previous {{ $period }}"><i class="bi bi-chevron-left"></i></a>
-            <a href="{{ $link(['date' => now()->toDateString()]) }}" class="btn btn-sm btn-outline-secondary">Today</a>
-            <a href="{{ $link(['date' => $nextDate->toDateString()]) }}" class="btn btn-sm btn-outline-secondary" title="Next {{ $period }}"><i class="bi bi-chevron-right"></i></a>
+        <div class="filter-divider"></div>
+
+        <div class="filter-group">
+            <div class="btn-group" role="group" aria-label="Move period">
+                <a href="{{ $link(['date' => $prevDate->toDateString()]) }}" class="btn btn-sm btn-outline-secondary" title="Previous {{ $period }}"><i class="bi bi-chevron-left"></i></a>
+                <a href="{{ $link(['date' => now()->toDateString()]) }}" class="btn btn-sm btn-outline-secondary">Today</a>
+                <a href="{{ $link(['date' => $nextDate->toDateString()]) }}" class="btn btn-sm btn-outline-secondary" title="Next {{ $period }}"><i class="bi bi-chevron-right"></i></a>
+            </div>
+            <form method="GET" class="mb-0">
+                <input type="hidden" name="period" value="{{ $period }}">
+                @if ($onlyAttention)<input type="hidden" name="attention" value="1">@endif
+                <input type="date" name="date" value="{{ $date->toDateString() }}" class="form-control form-control-sm"
+                       onchange="this.form.submit()" aria-label="Pick a date">
+            </form>
         </div>
 
-        <form method="GET" class="d-flex align-items-center gap-2 mb-0">
-            <input type="hidden" name="period" value="{{ $period }}">
-            @if ($onlyAttention)<input type="hidden" name="attention" value="1">@endif
-            <input type="date" name="date" value="{{ $date->toDateString() }}" class="form-control form-control-sm"
-                   style="width:auto" onchange="this.form.submit()" aria-label="Pick a date">
-        </form>
+        <div class="filter-divider"></div>
 
-        <form method="GET" class="form-check form-switch mb-0 ms-md-3">
+        <form method="GET" class="form-check form-switch mb-0">
             <input type="hidden" name="period" value="{{ $period }}">
             <input type="hidden" name="date" value="{{ $date->toDateString() }}">
             <input class="form-check-input" type="checkbox" role="switch" name="attention" value="1" id="attention"
                    @checked($onlyAttention) onchange="this.form.submit()">
-            <label class="form-check-label" for="attention">Show only low-stock and out-of-stock items</label>
+            <label class="form-check-label small" for="attention">Low / out-of-stock only</label>
         </form>
     </div>
 
@@ -73,12 +83,10 @@
             <div class="text-muted small">Units on hand</div><div class="fs-4 fw-bold">{{ number_format($totalUnits) }}</div></div></div></div>
         <div class="col-6 col-md-3"><div class="card shadow-sm h-100"><div class="card-body">
             <div class="text-muted small">Stock value</div><div class="fs-4 fw-bold">₱{{ number_format($totalValue, 2) }}</div></div></div></div>
-        {{-- Low stock: black number on a yellow background --}}
-        <div class="col-6 col-md-3"><div class="card shadow-sm h-100 border-0 bg-warning"><div class="card-body">
-            <div class="small text-dark">Low stock</div><div class="fs-4 fw-bold text-dark">{{ $lowCount }}</div></div></div></div>
-        {{-- Out of stock: black number on a red background --}}
-        <div class="col-6 col-md-3"><div class="card shadow-sm h-100 border-0 bg-danger"><div class="card-body">
-            <div class="small text-dark">Out of stock</div><div class="fs-4 fw-bold text-dark">{{ $outCount }}</div></div></div></div>
+        <div class="col-6 col-md-3"><div class="card stat-soft stat-warn h-100"><div class="card-body">
+            <div class="stat-label"><i class="bi bi-exclamation-circle"></i> Low stock</div><div class="stat-value">{{ $lowCount }}</div></div></div></div>
+        <div class="col-6 col-md-3"><div class="card stat-soft stat-danger h-100"><div class="card-body">
+            <div class="stat-label"><i class="bi bi-x-circle"></i> Out of stock</div><div class="stat-value">{{ $outCount }}</div></div></div></div>
     </div>
 
     <div class="card shadow-sm">
@@ -110,11 +118,11 @@
                             <td class="text-end text-muted">{{ $v->low_stock_threshold }}</td>
                             <td class="text-center">
                                 @if ($v->isOutOfStock())
-                                    <span class="badge bg-danger">Out of stock</span>
+                                    <span class="badge badge-soft badge-soft-danger">Out of stock</span>
                                 @elseif ($v->isLowStock())
-                                    <span class="badge bg-warning text-dark">Low stock</span>
+                                    <span class="badge badge-soft badge-soft-warn">Low stock</span>
                                 @else
-                                    <span class="badge bg-success">In-Stock</span>
+                                    <span class="badge badge-soft badge-soft-ok">In-Stock</span>
                                 @endif
                             </td>
                             <td class="text-end">₱{{ number_format($v->selling_price, 2) }}</td>

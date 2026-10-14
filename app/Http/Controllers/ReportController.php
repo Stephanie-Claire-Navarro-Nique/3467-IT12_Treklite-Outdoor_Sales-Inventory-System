@@ -10,8 +10,39 @@ class ReportController extends Controller
 {
     public function sales(Request $request)
     {
-        $from = $this->safeDate($request->query('from'), now()->startOfMonth())->startOfDay();
-        $to   = $this->safeDate($request->query('to'), now())->endOfDay();
+        $periods = ['day', 'week', 'month', 'year', 'custom'];
+        $period  = in_array($request->query('period'), $periods, true) ? $request->query('period') : null;
+
+        // Old links (?from=&to=) keep working and are treated as a custom range.
+        if ($period === null) {
+            $period = ($request->filled('from') || $request->filled('to')) ? 'custom' : 'month';
+        }
+
+        $date = $this->safeDate($request->query('date'), now());
+
+        if ($period === 'custom') {
+            $from = $this->safeDate($request->query('from'), now()->startOfMonth())->startOfDay();
+            $to   = $this->safeDate($request->query('to'), now())->endOfDay();
+            if ($from->gt($to)) {
+                [$from, $to] = [$to->copy()->startOfDay(), $from->copy()->endOfDay()];
+            }
+            $prevDate = $nextDate = $date;
+        } else {
+            [$from, $to] = match ($period) {
+                'day'   => [$date->copy()->startOfDay(),   $date->copy()->endOfDay()],
+                'week'  => [$date->copy()->startOfWeek(),  $date->copy()->endOfWeek()],
+                'month' => [$date->copy()->startOfMonth(), $date->copy()->endOfMonth()],
+                'year'  => [$date->copy()->startOfYear(),  $date->copy()->endOfYear()],
+            };
+            $prevDate = match ($period) {
+                'day' => $date->copy()->subDay(), 'week' => $date->copy()->subWeek(),
+                'month' => $date->copy()->subMonthNoOverflow(), 'year' => $date->copy()->subYearNoOverflow(),
+            };
+            $nextDate = match ($period) {
+                'day' => $date->copy()->addDay(), 'week' => $date->copy()->addWeek(),
+                'month' => $date->copy()->addMonthNoOverflow(), 'year' => $date->copy()->addYearNoOverflow(),
+            };
+        }
 
         $sales = Sale::with('user')->active()
             ->whereBetween('sold_at', [$from, $to])
@@ -29,7 +60,7 @@ class ReportController extends Controller
             'total' => $g->sum('total_amount'),
         ]);
 
-        return view('reports.sales', compact('sales', 'from', 'to', 'totalRevenue', 'byPayment', 'voidedCount', 'voidedTotal'));
+        return view('reports.sales', compact('sales', 'from', 'to', 'period', 'date', 'prevDate', 'nextDate', 'totalRevenue', 'byPayment', 'voidedCount', 'voidedTotal'));
     }
 
     /** A date from the link, or the default when it is empty or not a real date (so a bad link never crashes the page). */

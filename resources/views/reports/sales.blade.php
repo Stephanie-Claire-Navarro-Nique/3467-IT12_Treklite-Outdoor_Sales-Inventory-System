@@ -13,9 +13,18 @@
         .chart-box { position: relative; height: 280px; }
     </style>
 
+    @include('reports.partials.styles')
+
     @php
+        $link = fn (array $over = []) => route('reports.sales', array_filter(array_merge([
+            'period' => $period,
+            'date'   => $date->toDateString(),
+        ], $over), fn ($v) => $v !== null));
+        $periodOptions = ['day' => 'Day', 'week' => 'Week', 'month' => 'Month', 'year' => 'Year'];
+
         // ---------- chart data (built from the data the controller already passes) ----------
         $singleDay = $from->isSameDay($to);
+        $byMonthView = $from->diffInDays($to) > 120;
         $timeLabels = [];
         $timeRevenue = [];
         $timeCounts = [];
@@ -32,11 +41,19 @@
                 $timeRevenue[] = round((float) $group->sum('total_amount'), 2);
                 $timeCounts[]  = $group->count();
             }
+        } elseif ($byMonthView) {
+            $byMonth = $sales->groupBy(fn ($s) => $s->sold_at->format('Y-m'));
+            foreach (\Carbon\CarbonPeriod::create($from->copy()->startOfMonth(), '1 month', $to->copy()->startOfMonth()) as $m) {
+                $group = $byMonth->get($m->format('Y-m'), collect());
+                $timeLabels[]  = $m->format('M Y');
+                $timeRevenue[] = round((float) $group->sum('total_amount'), 2);
+                $timeCounts[]  = $group->count();
+            }
         } else {
             // Group by day, including days with no sales
             $byDay = $sales->groupBy(fn ($s) => $s->sold_at->format('Y-m-d'));
-            $period = \Carbon\CarbonPeriod::create($from->copy()->startOfDay(), $to->copy()->startOfDay());
-            foreach ($period as $day) {
+            $dayRange = \Carbon\CarbonPeriod::create($from->copy()->startOfDay(), $to->copy()->startOfDay());
+            foreach ($dayRange as $day) {
                 $group = $byDay->get($day->format('Y-m-d'), collect());
                 $timeLabels[]  = $day->format('M d');
                 $timeRevenue[] = round((float) $group->sum('total_amount'), 2);
@@ -71,11 +88,50 @@
     <li class="nav-item"><a class="nav-link" href="{{ route('reports.inventory') }}">Inventory Report</a></li>
     </ul>
 
-    <form method="GET" class="row g-2 mb-4 no-print">
-        <div class="col-auto"><input type="date" name="from" class="form-control" value="{{ $from->format('Y-m-d') }}"></div>
-        <div class="col-auto"><input type="date" name="to" class="form-control" value="{{ $to->format('Y-m-d') }}"></div>
-        <div class="col-auto"><button class="btn btn-success">Filter</button></div>
-    </form>
+    <div class="filter-bar mb-3 no-print">
+        <div class="filter-group">
+            <span class="filter-label">Period</span>
+            <div class="btn-group" role="group" aria-label="Report period">
+                @foreach ($periodOptions as $key => $label)
+                    <a href="{{ $link(['period' => $key, 'from' => null, 'to' => null]) }}"
+                       class="btn btn-sm {{ $period === $key ? 'btn-success' : 'btn-outline-success' }}">{{ $label }}</a>
+                @endforeach
+            </div>
+        </div>
+
+        @if ($period !== 'custom')
+            <div class="filter-divider"></div>
+            <div class="filter-group">
+                <div class="btn-group" role="group" aria-label="Move period">
+                    <a href="{{ $link(['date' => $prevDate->toDateString()]) }}" class="btn btn-sm btn-outline-secondary" title="Previous {{ $period }}"><i class="bi bi-chevron-left"></i></a>
+                    <a href="{{ $link(['date' => now()->toDateString()]) }}" class="btn btn-sm btn-outline-secondary">Today</a>
+                    <a href="{{ $link(['date' => $nextDate->toDateString()]) }}" class="btn btn-sm btn-outline-secondary" title="Next {{ $period }}"><i class="bi bi-chevron-right"></i></a>
+                </div>
+                <form method="GET" class="mb-0">
+                    <input type="hidden" name="period" value="{{ $period }}">
+                    <input type="date" name="date" value="{{ $date->toDateString() }}" class="form-control form-control-sm"
+                           onchange="this.form.submit()" aria-label="Pick a date">
+                </form>
+            </div>
+        @endif
+
+        <div class="filter-divider"></div>
+
+        <form method="GET" class="filter-group mb-0">
+            <input type="hidden" name="period" value="custom">
+            <span class="filter-label">Custom</span>
+            <div class="range-field">
+                <label for="from">From</label>
+                <input type="date" id="from" name="from" class="form-control form-control-sm" value="{{ $from->format('Y-m-d') }}" max="{{ now()->toDateString() }}">
+            </div>
+            <span class="range-sep">&rarr;</span>
+            <div class="range-field">
+                <label for="to">To</label>
+                <input type="date" id="to" name="to" class="form-control form-control-sm" value="{{ $to->format('Y-m-d') }}">
+            </div>
+            <button class="btn btn-sm {{ $period === 'custom' ? 'btn-success' : 'btn-outline-success' }}">Apply</button>
+        </form>
+    </div>
 
     <div class="small text-muted mb-2">{{ $from->format('M d, Y') }} &ndash; {{ $to->format('M d, Y') }}</div>
 
@@ -108,7 +164,7 @@
             <div class="card shadow-sm h-100 chart-card">
                 <div class="card-header fw-bold">
                     <i class="bi bi-bar-chart-line"></i>
-                    Revenue {{ $singleDay ? 'by hour' : 'by day' }}
+                    Revenue {{ $singleDay ? 'by hour' : ($byMonthView ? 'by month' : 'by day') }}
                 </div>
                 <div class="card-body">
                     @if ($sales->isEmpty())
