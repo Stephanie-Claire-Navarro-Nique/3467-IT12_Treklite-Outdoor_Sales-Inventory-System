@@ -48,7 +48,7 @@
                                     <th>{{ $t['one'] }}</th>
                                     <th class="text-center" style="width:150px">Used by</th>
                                     <th class="text-center" style="width:120px">Status</th>
-                                    <th class="text-end" style="width:320px"></th>
+                                    <th class="text-center" style="width:150px">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -66,22 +66,22 @@
                                         <td class="text-center">
                                             <span class="badge {{ $row->is_active ? 'bg-success' : 'bg-secondary' }}">{{ $row->is_active ? 'Enabled' : 'Disabled' }}</span>
                                         </td>
-                                        <td class="text-end">
+                                        <td class="text-center">
                                             <div class="d-inline-flex gap-1">
                                                 <button type="button" class="btn btn-sm btn-outline-secondary btn-icon" title="Rename / edit" aria-label="Edit"
                                                         data-opt-edit="{{ $key }}" data-id="{{ $row->id }}" data-name="{{ $row->name }}" data-order="{{ $row->sort_order ?? '' }}">
-                                                    <i class="bi bi-pencil-square"></i> Edit
+                                                    <i class="bi bi-pencil-square"></i>
                                                 </button>
                                                 <button type="button" class="btn btn-sm {{ $row->is_active ? 'btn-outline-warning' : 'btn-outline-success' }} btn-icon"
                                                         title="{{ $row->is_active ? 'Disable (hide from new products)' : 'Enable again' }}" aria-label="Enable or disable"
                                                         data-opt-toggle="{{ $key }}" data-id="{{ $row->id }}">
-                                                    <i class="bi {{ $row->is_active ? 'bi-eye-slash' : 'bi-eye' }}"></i> {{ $row->is_active ? 'Disable' : 'Enable' }}
+                                                    <i class="bi {{ $row->is_active ? 'bi-eye-slash' : 'bi-eye' }}"></i>
                                                 </button>
                                                 <button type="button" class="btn btn-sm btn-outline-danger btn-icon" aria-label="Delete"
                                                         title="{{ $row->used_count > 0 ? 'In use - cannot delete. Disable it instead.' : 'Delete' }}"
                                                         data-opt-delete="{{ $key }}" data-id="{{ $row->id }}" data-name="{{ $row->name }}" data-used="{{ $row->used_count }}"
                                                         @disabled($row->used_count > 0)>
-                                                    <i class="bi bi-trash"></i> Delete
+                                                    <i class="bi bi-trash"></i>
                                                 </button>
                                             </div>
                                         </td>

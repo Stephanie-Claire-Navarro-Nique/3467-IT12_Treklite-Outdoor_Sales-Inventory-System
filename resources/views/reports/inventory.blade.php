@@ -69,7 +69,7 @@
                             @elseif ($v->isLowStock())
                                 <span class="badge bg-warning text-dark">Low stock</span>
                             @else
-                                <span class="badge bg-success">OK</span>
+                                <span class="badge bg-success">In-Stock</span>
                             @endif
                         </td>
                         <td class="text-end">₱{{ number_format($v->selling_price, 2) }}</td>

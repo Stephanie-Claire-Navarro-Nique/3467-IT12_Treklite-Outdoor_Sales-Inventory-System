@@ -48,7 +48,7 @@
                 <label for="brand-status" class="small text-muted mb-0">Status</label>
                 <select name="status" id="brand-status" class="form-select form-select-sm" style="width:auto" onchange="this.form.submit()">
                     <option value="">All</option>
-                    <option value="ok">OK</option>
+                    <option value="ok">In-Stock</option>
                     <option value="low">Low stock</option>
                     <option value="out">Out of stock</option>
                 </select>
@@ -68,7 +68,7 @@
                                 <div class="mt-1">
                                     @if ($b->out_count > 0)<span class="badge bg-danger">{{ $b->out_count }} out of stock</span>@endif
                                     @if ($b->low_count > 0)<span class="badge bg-warning text-dark">{{ $b->low_count }} low</span>@endif
-                                    @if ($b->out_count == 0 && $b->low_count == 0)<span class="badge bg-success">All OK</span>@endif
+                                    @if ($b->out_count == 0 && $b->low_count == 0)<span class="badge bg-success">All In-Stock</span>@endif
                                 </div>
                             </div>
                         </div>
@@ -132,7 +132,7 @@
                         <label class="form-label small mb-0">Status</label>
                         <select name="status" class="form-select form-select-sm">
                             <option value="">All</option>
-                            <option value="ok"  @selected($status === 'ok')>OK</option>
+                            <option value="ok"  @selected($status === 'ok')>In-Stock</option>
                             <option value="low" @selected($status === 'low')>Low stock</option>
                             <option value="out" @selected($status === 'out')>Out of stock</option>
                         </select>
@@ -157,7 +157,7 @@
                             <th class="text-end" style="width:90px">In stock</th>
                             <th class="text-center" style="width:120px">Status</th>
                             @if ($isOwner)
-                                <th class="text-end" style="width:230px">Actions</th>
+                                <th class="text-center" style="width:110px">Action</th>
                             @endif
                         </tr>
                     </thead>
@@ -184,11 +184,11 @@
                                     @elseif ($v->isLowStock())
                                         <span class="badge bg-warning text-dark status-badge">Low stock</span>
                                     @else
-                                        <span class="badge bg-success status-badge">OK</span>
+                                        <span class="badge bg-success status-badge">In-Stock</span>
                                     @endif
                                 </td>
                                 @if ($isOwner)
-                                    <td class="text-end">
+                                    <td class="text-center">
                                         <div class="d-inline-flex gap-1">
                                             {{-- Opens the Receive / Count pop-up for this item --}}
                                             <button type="button" class="btn btn-sm btn-success btn-icon" title="Receive / Count stock" aria-label="Receive or count stock"
@@ -198,9 +198,9 @@
                                                     data-size="{{ $v->size?->name ?? '—' }}"
                                                     data-color="{{ $v->color?->name ?? '—' }}"
                                                     data-current="{{ $v->quantity }}">
-                                                <i class="bi bi-clipboard2-plus"></i> Stock
+                                                <i class="bi bi-clipboard2-plus"></i>
                                             </button>
-                                            <a href="{{ route('inventory.history', ['variant' => $v->id]) }}" class="btn btn-sm btn-outline-secondary btn-icon" title="Stock history"><i class="bi bi-clock-history"></i> History</a>
+                                            <a href="{{ route('inventory.history', ['variant' => $v->id]) }}" class="btn btn-sm btn-outline-secondary btn-icon" title="Stock history" aria-label="Stock history"><i class="bi bi-clock-history"></i></a>
                                         </div>
                                     </td>
                                 @endif

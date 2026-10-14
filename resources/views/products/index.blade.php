@@ -74,7 +74,7 @@
                         <th>Category</th>
                         <th class="text-end">Price</th>
                         <th class="text-center">Variants</th>
-                        <th class="text-end" style="width:420px"></th>
+                        <th class="text-center" style="width:200px">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -99,20 +99,20 @@
                             </td>
                             <td class="text-end">₱{{ number_format($p->price, 2) }}</td>
                             <td class="text-center">{{ $p->variants->count() }}</td>
-                            <td class="text-end">
-                                <div class="d-inline-flex gap-1 justify-content-end">
+                            <td class="text-center">
+                                <div class="d-inline-flex gap-1 justify-content-center">
                                     @if ($p->is_active)
-                                        <a href="{{ route('inventory.index', ['product' => $p->id]) }}" class="btn btn-sm btn-outline-success btn-icon" title="Manage Inventory" aria-label="Manage Inventory"><i class="bi bi-box-seam"></i> Inventory</a>
-                                        <a href="{{ route('products.edit', $p) }}" class="btn btn-sm btn-outline-secondary btn-icon" title="Edit" aria-label="Edit"><i class="bi bi-pencil-square"></i> Edit</a>
+                                        <a href="{{ route('inventory.index', ['product' => $p->id]) }}" class="btn btn-sm btn-outline-success btn-icon" title="Manage Inventory" aria-label="Manage Inventory"><i class="bi bi-box-seam"></i></a>
+                                        <a href="{{ route('products.edit', $p) }}" class="btn btn-sm btn-outline-secondary btn-icon" title="Edit" aria-label="Edit"><i class="bi bi-pencil-square"></i></a>
                                         <form method="POST" action="{{ route('products.archive', $p) }}" class="d-inline"
                                               onsubmit="return confirm('Archive {{ addslashes($p->name) }}? It will no longer appear in New Sale or Inventory. Past sales are not affected.');">
                                             @csrf
-                                            <button class="btn btn-sm btn-outline-danger btn-icon" title="Archive" aria-label="Archive"><i class="bi bi-archive"></i> Archive</button>
+                                            <button class="btn btn-sm btn-outline-danger btn-icon" title="Archive" aria-label="Archive"><i class="bi bi-archive"></i></button>
                                         </form>
                                     @else
                                         <form method="POST" action="{{ route('products.restore', $p) }}" class="d-inline">
                                             @csrf
-                                            <button class="btn btn-sm btn-outline-success btn-icon" title="Restore" aria-label="Restore"><i class="bi bi-arrow-counterclockwise"></i> Restore</button>
+                                            <button class="btn btn-sm btn-outline-success btn-icon" title="Restore" aria-label="Restore"><i class="bi bi-arrow-counterclockwise"></i></button>
                                         </form>
                                     @endif
                                     @if ($deletable->contains($p->id))
@@ -120,7 +120,7 @@
                                               onsubmit="return confirm('Permanently delete {{ addslashes($p->name) }}? This cannot be undone.');">
                                             @csrf
                                             @method('DELETE')
-                                            <button class="btn btn-sm btn-danger btn-icon" title="Delete (no sales or stock records yet)" aria-label="Delete"><i class="bi bi-trash"></i> Delete</button>
+                                            <button class="btn btn-sm btn-danger btn-icon" title="Delete (no sales or stock records yet)" aria-label="Delete"><i class="bi bi-trash"></i></button>
                                         </form>
                                     @endif
                                 </div>

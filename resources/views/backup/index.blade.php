@@ -28,14 +28,14 @@
             <div class="card shadow-sm">
                 <div class="card-header fw-bold">Saved backups on the server</div>
                 <table class="table mb-0 align-middle">
-                    <thead><tr><th>File</th><th>Created</th><th class="text-end">Size</th><th></th></tr></thead>
+                    <thead><tr><th>File</th><th>Created</th><th class="text-end">Size</th><th class="text-center" style="width:110px">Action</th></tr></thead>
                     <tbody>
                         @forelse ($backups as $b)
                             <tr>
                                 <td class="small">{{ $b['name'] }}</td>
                                 <td class="small">{{ $b['modified']->format('M d, Y h:i A') }}</td>
                                 <td class="text-end small">{{ number_format($b['size'] / 1024, 1) }} KB</td>
-                                <td class="text-end"><a href="{{ route('backup.download', $b['name']) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-download"></i> Download</a></td>
+                                <td class="text-center"><a href="{{ route('backup.download', $b['name']) }}" class="btn btn-sm btn-outline-secondary" title="Download" aria-label="Download"><i class="bi bi-download"></i></a></td>
                             </tr>
                         @empty
                             <tr><td colspan="4" class="text-center text-muted py-4">No backups yet.</td></tr>

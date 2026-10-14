@@ -16,7 +16,7 @@
                     <th>Email</th>
                     <th class="text-center">Status</th>
                     <th>Created</th>
-                    <th class="text-end">Actions</th>
+                    <th class="text-center" style="width:110px">Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -32,13 +32,13 @@
                             @endif
                         </td>
                         <td class="small">{{ $u->created_at->format('M d, Y') }}</td>
-                        <td class="text-end">
-                            <a href="{{ route('users.edit', $u) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                        <td class="text-center">
+                            <a href="{{ route('users.edit', $u) }}" class="btn btn-sm btn-outline-secondary" title="Edit" aria-label="Edit"><i class="bi bi-pencil-square"></i></a>
                             <form method="POST" action="{{ route('users.destroy', $u) }}" class="d-inline"
                                   onsubmit="return confirm('Delete the account of {{ addslashes($u->name) }}? This cannot be undone.');">
                                 @csrf
                                 @method('DELETE')
-                                <button class="btn btn-sm btn-outline-danger">Delete</button>
+                                <button class="btn btn-sm btn-outline-danger" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
                             </form>
                         </td>
                     </tr>
