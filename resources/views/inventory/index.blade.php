@@ -154,7 +154,7 @@
                             <th>Model</th>
                             <th style="width:140px">Size</th>
                             <th style="width:140px">Color</th>
-                            <th class="text-end" style="width:90px">In stock</th>
+                            <th class="text-end" style="width:90px">Stocks</th>
                             <th class="text-center" style="width:120px">Status</th>
                             @if ($isOwner)
                                 <th class="text-center" style="width:110px">Action</th>
