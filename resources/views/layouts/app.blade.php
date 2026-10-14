@@ -202,7 +202,6 @@
             ['route' => 'sales.create',    'label' => 'New Sale',      'icon' => 'bi-cart-plus',    'match' => 'sales.create'],
             ['route' => 'sales.index',     'label' => 'Sales Records', 'icon' => 'bi-receipt',      'match' => 'sales.index'],
             ['route' => 'products.index',  'label' => 'Products',      'icon' => 'bi-tags',         'match' => 'products.*'],
-            ['route' => 'options.index',   'label' => 'Product Lists', 'icon' => 'bi-list-check',   'match' => 'options.*'],
             ['route' => 'inventory.index', 'label' => 'Inventory',     'icon' => 'bi-box-seam',     'match' => 'inventory.*'],
             ['route' => 'reports.sales',   'label' => 'Reports',       'icon' => 'bi-graph-up',     'match' => 'reports.*'],
             ['route' => 'users.index',  'label' => 'Staff Accounts', 'icon' => 'bi-people', 'match' => 'users.*'],
