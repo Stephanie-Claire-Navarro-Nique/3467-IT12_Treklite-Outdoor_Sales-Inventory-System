@@ -22,6 +22,7 @@ class InventoryReportController extends Controller
         // Period filter: Day / Week / Month / Year around a chosen date (today by default).
         $period = in_array($request->query('period'), self::PERIODS, true) ? $request->query('period') : 'month';
         $date   = $this->safeDate($request->query('date'));
+        if ($date->gt(now())) { $date = now(); }   // no future dates
 
         [$from, $to, $periodLabel] = match ($period) {
             'day'   => [$date->copy()->startOfDay(),   $date->copy()->endOfDay(),   $date->format('M d, Y')],
@@ -42,6 +43,9 @@ class InventoryReportController extends Controller
             'month' => $date->copy()->addMonthNoOverflow(),
             'year'  => $date->copy()->addYearNoOverflow(),
         };
+
+        // Never step into the future.
+        if ($nextDate->gt(now())) { $nextDate = now(); }
 
         $variants = ProductVariant::with('product')
             ->whereHas('product', fn ($p) => $p->where('is_active', true))

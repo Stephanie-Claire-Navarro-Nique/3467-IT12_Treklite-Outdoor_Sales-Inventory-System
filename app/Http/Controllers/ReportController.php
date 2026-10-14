@@ -19,10 +19,13 @@ class ReportController extends Controller
         }
 
         $date = $this->safeDate($request->query('date'), now());
+        if ($date->gt(now())) { $date = now(); }   // no future dates
 
         if ($period === 'custom') {
             $from = $this->safeDate($request->query('from'), now()->startOfMonth())->startOfDay();
             $to   = $this->safeDate($request->query('to'), now())->endOfDay();
+            if ($from->gt(now())) { $from = now()->startOfDay(); }   // no future dates
+            if ($to->gt(now()))   { $to   = now()->endOfDay(); }
             if ($from->gt($to)) {
                 [$from, $to] = [$to->copy()->startOfDay(), $from->copy()->endOfDay()];
             }
@@ -43,6 +46,12 @@ class ReportController extends Controller
                 'month' => $date->copy()->addMonthNoOverflow(), 'year' => $date->copy()->addYearNoOverflow(),
             };
         }
+
+        // The range never reaches past today.
+        if ($to->gt(now())) { $to = now()->endOfDay(); }
+
+        // Never step into the future.
+        if ($nextDate->gt(now())) { $nextDate = now(); }
 
         $sales = Sale::with('user')->active()
             ->whereBetween('sold_at', [$from, $to])

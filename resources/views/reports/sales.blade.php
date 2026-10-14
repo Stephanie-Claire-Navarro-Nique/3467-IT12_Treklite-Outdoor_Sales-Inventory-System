@@ -20,7 +20,7 @@
             'period' => $period,
             'date'   => $date->toDateString(),
         ], $over), fn ($v) => $v !== null));
-        $periodOptions = ['day' => 'Day', 'week' => 'Week', 'month' => 'Month', 'year' => 'Year'];
+        $periodOptions = ['day' => 'Today', 'week' => 'Week', 'month' => 'Month', 'year' => 'Year'];
 
         // ---------- chart data (built from the data the controller already passes) ----------
         $singleDay = $from->isSameDay($to);
@@ -93,7 +93,7 @@
             <span class="filter-label">Period</span>
             <div class="btn-group" role="group" aria-label="Report period">
                 @foreach ($periodOptions as $key => $label)
-                    <a href="{{ $link(['period' => $key, 'from' => null, 'to' => null]) }}"
+                    <a href="{{ $link(['period' => $key, 'from' => null, 'to' => null] + ($key === 'day' ? ['date' => now()->toDateString()] : [])) }}"
                        class="btn btn-sm {{ $period === $key ? 'btn-success' : 'btn-outline-success' }}">{{ $label }}</a>
                 @endforeach
             </div>
@@ -104,13 +104,16 @@
             <div class="filter-group">
                 <div class="btn-group" role="group" aria-label="Move period">
                     <a href="{{ $link(['date' => $prevDate->toDateString()]) }}" class="btn btn-sm btn-outline-secondary" title="Previous {{ $period }}"><i class="bi bi-chevron-left"></i></a>
-                    <a href="{{ $link(['date' => now()->toDateString()]) }}" class="btn btn-sm btn-outline-secondary">Today</a>
-                    <a href="{{ $link(['date' => $nextDate->toDateString()]) }}" class="btn btn-sm btn-outline-secondary" title="Next {{ $period }}"><i class="bi bi-chevron-right"></i></a>
+                    @if ($to->lt(now()))
+                        <a href="{{ $link(['date' => $nextDate->toDateString()]) }}" class="btn btn-sm btn-outline-secondary" title="Next {{ $period }}"><i class="bi bi-chevron-right"></i></a>
+                    @else
+                        <span class="btn btn-sm btn-outline-secondary disabled" title="Can't view future dates" aria-disabled="true"><i class="bi bi-chevron-right"></i></span>
+                    @endif
                 </div>
                 <form method="GET" class="mb-0">
                     <input type="hidden" name="period" value="{{ $period }}">
                     <input type="date" name="date" value="{{ $date->toDateString() }}" class="form-control form-control-sm"
-                           onchange="this.form.submit()" aria-label="Pick a date">
+                           onchange="this.form.submit()" max="{{ now()->toDateString() }}" aria-label="Pick a date">
                 </form>
             </div>
         @endif
@@ -127,7 +130,7 @@
             <span class="range-sep">&rarr;</span>
             <div class="range-field">
                 <label for="to">To</label>
-                <input type="date" id="to" name="to" class="form-control form-control-sm" value="{{ $to->format('Y-m-d') }}">
+                <input type="date" id="to" name="to" class="form-control form-control-sm" value="{{ $to->format('Y-m-d') }}" max="{{ now()->toDateString() }}">
             </div>
             <button class="btn btn-sm {{ $period === 'custom' ? 'btn-success' : 'btn-outline-success' }}">Apply</button>
         </form>
