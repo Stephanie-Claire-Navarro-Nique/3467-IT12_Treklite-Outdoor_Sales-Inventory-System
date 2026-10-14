@@ -229,6 +229,7 @@
                 document.getElementById('quick-label').textContent = 'New ' + NAMES[type] + ' name';
                 nameEl.maxLength = (type === 'sizes' || type === 'colors') ? 50 : 255;
                 nameEl.value = '';
+                nameEl.style.textTransform = type === 'brands' ? 'uppercase' : '';   // brands are typed (and saved) in capitals
                 errEl.classList.add('d-none');
                 saveBtn.disabled = false;
                 modal.show();

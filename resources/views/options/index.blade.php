@@ -177,6 +177,7 @@
                 document.getElementById('opt-name-label').textContent = t.one + ' name';
                 nameEl.maxLength = t.max;
                 nameEl.value = row?.name ?? '';
+                nameEl.style.textTransform = type === 'brands' ? 'uppercase' : '';   // brands are typed (and saved) in capitals
                 orderEl.value = row?.order ?? '';
                 document.getElementById('opt-order-wrap').classList.toggle('d-none', type !== 'sizes');
                 errEl.classList.add('d-none');
