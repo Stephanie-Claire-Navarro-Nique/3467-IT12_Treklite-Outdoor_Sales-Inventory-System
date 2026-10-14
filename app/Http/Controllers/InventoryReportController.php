@@ -9,43 +9,54 @@ use Illuminate\Http\Request;
 
 /**
  * Owner-only inventory report: stock on hand per product variant, with low-stock items,
- * plus what moved in the chosen Day / Week / Month / Year (received, sold, adjusted by a count).
+ * plus what moved in the chosen Today / Week / Month / Year or custom range (received, sold, adjusted by a count).
  */
 class InventoryReportController extends Controller
 {
-    private const PERIODS = ['day', 'week', 'month', 'year'];
+    private const PERIODS = ['day', 'week', 'month', 'year', 'custom'];
 
     public function index(Request $request)
     {
         $onlyAttention = $request->boolean('attention');
 
-        // Period filter: Day / Week / Month / Year around a chosen date (today by default).
-        $period = in_array($request->query('period'), self::PERIODS, true) ? $request->query('period') : 'month';
-        $date   = $this->safeDate($request->query('date'));
+        // Period filter: Today / Week / Month / Year, or a Custom From -> To range (same as the Sales Report).
+        $period = in_array($request->query('period'), self::PERIODS, true) ? $request->query('period') : null;
+
+        // Links with ?from=&to= are treated as a custom range.
+        if ($period === null) {
+            $period = ($request->filled('from') || $request->filled('to')) ? 'custom' : 'month';
+        }
+
+        $date = $this->safeDate($request->query('date'), now());
         if ($date->gt(now())) { $date = now(); }   // no future dates
 
-        [$from, $to, $periodLabel] = match ($period) {
-            'day'   => [$date->copy()->startOfDay(),   $date->copy()->endOfDay(),   $date->format('M d, Y')],
-            'week'  => [$date->copy()->startOfWeek(),  $date->copy()->endOfWeek(),  $date->copy()->startOfWeek()->format('M d') . ' – ' . $date->copy()->endOfWeek()->format('M d, Y')],
-            'month' => [$date->copy()->startOfMonth(), $date->copy()->endOfMonth(), $date->format('F Y')],
-            'year'  => [$date->copy()->startOfYear(),  $date->copy()->endOfYear(),  $date->format('Y')],
-        };
+        if ($period === 'custom') {
+            $from = $this->safeDate($request->query('from'), now()->startOfMonth())->startOfDay();
+            $to   = $this->safeDate($request->query('to'), now())->endOfDay();
+            if ($from->gt(now())) { $from = now()->startOfDay(); }   // no future dates
+            if ($to->gt(now()))   { $to   = now()->endOfDay(); }
+            if ($from->gt($to)) {
+                [$from, $to] = [$to->copy()->startOfDay(), $from->copy()->endOfDay()];
+            }
+        } else {
+            [$from, $to] = match ($period) {
+                'day'   => [$date->copy()->startOfDay(),   $date->copy()->endOfDay()],
+                'week'  => [$date->copy()->startOfWeek(),  $date->copy()->endOfWeek()],
+                'month' => [$date->copy()->startOfMonth(), $date->copy()->endOfMonth()],
+                'year'  => [$date->copy()->startOfYear(),  $date->copy()->endOfYear()],
+            };
+        }
 
-        $prevDate = match ($period) {
-            'day'   => $date->copy()->subDay(),
-            'week'  => $date->copy()->subWeek(),
-            'month' => $date->copy()->subMonthNoOverflow(),
-            'year'  => $date->copy()->subYearNoOverflow(),
-        };
-        $nextDate = match ($period) {
-            'day'   => $date->copy()->addDay(),
-            'week'  => $date->copy()->addWeek(),
-            'month' => $date->copy()->addMonthNoOverflow(),
-            'year'  => $date->copy()->addYearNoOverflow(),
-        };
+        // The range never reaches past today.
+        if ($to->gt(now())) { $to = now()->endOfDay(); }
 
-        // Never step into the future.
-        if ($nextDate->gt(now())) { $nextDate = now(); }
+        $periodLabel = match (true) {
+            $period === 'custom'  => $from->format('M d, Y') . ' – ' . $to->format('M d, Y'),
+            $period === 'day'     => $from->format('M d, Y'),
+            $period === 'week'    => $from->format('M d') . ' – ' . $from->copy()->endOfWeek()->format('M d, Y'),
+            $period === 'month'   => $from->format('F Y'),
+            default               => $from->format('Y'),
+        };
 
         $variants = ProductVariant::with('product')
             ->whereHas('product', fn ($p) => $p->where('is_active', true))
@@ -82,18 +93,18 @@ class InventoryReportController extends Controller
 
         return view('reports.inventory', compact(
             'variants', 'onlyAttention', 'totalUnits', 'totalValue', 'lowCount', 'outCount',
-            'period', 'date', 'from', 'to', 'periodLabel', 'prevDate', 'nextDate',
+            'period', 'date', 'from', 'to', 'periodLabel',
             'periodReceived', 'periodSold', 'periodAdjusted'
         ));
     }
 
     /** A date from the link, or today when it is empty or not a real date (so a bad link never crashes the page). */
-    private function safeDate($value): Carbon
+    private function safeDate($value, Carbon $default): Carbon
     {
         try {
-            return is_string($value) && trim($value) !== '' ? Carbon::parse($value) : now();
+            return is_string($value) && trim($value) !== '' ? Carbon::parse($value) : $default->copy();
         } catch (\Throwable $e) {
-            return now();
+            return $default->copy();
         }
     }
 }
