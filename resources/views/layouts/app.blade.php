@@ -28,6 +28,7 @@
             flex-direction: column;
             z-index: 1040;
             transition: transform 0.2s ease-in-out;
+            overflow-y: auto;
         }
 
         .sidebar .brand {
@@ -84,12 +85,25 @@
             font-weight: 600;
         }
 
+        /* Small group heading in the menu: the label, then a thin line that fills the rest of the row */
         .sidebar .nav-section-label {
-            padding: 0.9rem 1.25rem 0.3rem;
-            font-size: 0.72rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.85rem 1.25rem 0.25rem;
+            font-size: 0.68rem;
+            font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.08em;
             color: rgba(255, 255, 255, 0.55);
+            user-select: none;
+        }
+
+        .sidebar .nav-section-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.2);
         }
 
         .sidebar .sidebar-footer {
@@ -198,20 +212,20 @@
     // Dashboard first, then the major transactions (Sales, Inventory), then master data and reports
     $navItems = $isOwner
         ? [
-            ['route' => 'dashboard',       'label' => 'Dashboard',     'icon' => 'bi-speedometer2', 'match' => 'dashboard'],
-            ['route' => 'sales.create',    'label' => 'New Sale',      'icon' => 'bi-cart-plus',    'match' => 'sales.create'],
-            ['route' => 'sales.index',     'label' => 'Sales Records', 'icon' => 'bi-receipt',      'match' => 'sales.index'],
-            ['route' => 'products.index',  'label' => 'Products',      'icon' => 'bi-tags',         'match' => 'products.*'],
-            ['route' => 'inventory.index', 'label' => 'Inventory',     'icon' => 'bi-box-seam',     'match' => 'inventory.*'],
-            ['route' => 'reports.sales',   'label' => 'Reports',       'icon' => 'bi-graph-up',     'match' => 'reports.*'],
-            ['route' => 'users.index',  'label' => 'Staff Accounts', 'icon' => 'bi-people', 'match' => 'users.*'],
-            ['route' => 'activity.index', 'label' => 'Activity Log', 'icon' => 'bi-clock-history', 'match' => 'activity.*'],
-            ['route' => 'backup.index', 'label' => 'Backup', 'icon' => 'bi-cloud-arrow-down','match' => 'backup.*'],
+            ['group' => 'Overview',         'route' => 'dashboard',       'label' => 'Dashboard', 'desc' => 'Overview of sales and stock at a glance',      'icon' => 'bi-speedometer2',     'match' => 'dashboard'],
+            ['group' => 'Sales',            'route' => 'sales.create',    'label' => 'New Sale', 'desc' => 'Record a new customer sale',       'icon' => 'bi-cart-plus',        'match' => 'sales.create'],
+            ['group' => 'Sales',            'route' => 'sales.index',     'label' => 'Sales Records', 'desc' => 'View and search past sales and invoices',  'icon' => 'bi-receipt',          'match' => 'sales.index'],
+            ['group' => 'Products & Stock', 'route' => 'products.index',  'label' => 'Products', 'desc' => 'Add and edit products, prices and photos',       'icon' => 'bi-tags',             'match' => 'products.*'],
+            ['group' => 'Products & Stock', 'route' => 'inventory.index', 'label' => 'Inventory', 'desc' => 'Receive deliveries and count stock',      'icon' => 'bi-box-seam',         'match' => 'inventory.*'],
+            ['group' => 'Analytics',        'route' => 'reports.sales',   'label' => 'Reports', 'desc' => 'Sales and inventory reports',        'icon' => 'bi-graph-up',         'match' => 'reports.*'],
+            ['group' => 'Administration',   'route' => 'users.index',     'label' => 'Staff Accounts', 'desc' => 'Manage staff and their logins', 'icon' => 'bi-people',           'match' => 'users.*'],
+            ['group' => 'Administration',   'route' => 'activity.index',  'label' => 'Activity Log', 'desc' => 'See who did what in the system',   'icon' => 'bi-clock-history',    'match' => 'activity.*'],
+            ['group' => 'Administration',   'route' => 'backup.index',    'label' => 'Backup', 'desc' => 'Create, download and restore database backups',         'icon' => 'bi-cloud-arrow-down', 'match' => 'backup.*'],
         ]
         : [
-            ['route' => 'sales.create',    'label' => 'New Sale',      'icon' => 'bi-cart-plus',    'match' => 'sales.create'],
-            ['route' => 'sales.index',     'label' => 'Sales Records', 'icon' => 'bi-receipt',      'match' => 'sales.index'],
-            ['route' => 'inventory.index', 'label' => 'Stock Check',   'icon' => 'bi-box-seam',     'match' => 'inventory.*'],
+            ['group' => 'Sales', 'route' => 'sales.create',    'label' => 'New Sale', 'desc' => 'Record a new customer sale',      'icon' => 'bi-cart-plus', 'match' => 'sales.create'],
+            ['group' => 'Sales', 'route' => 'sales.index',     'label' => 'Sales Records', 'desc' => 'View and search past sales and invoices', 'icon' => 'bi-receipt',   'match' => 'sales.index'],
+            ['group' => 'Stock', 'route' => 'inventory.index', 'label' => 'Stock Check', 'desc' => 'Check what is available in stock',   'icon' => 'bi-box-seam',  'match' => 'inventory.*'],
         ];
 @endphp
 
@@ -226,8 +240,13 @@
     </div>
     <nav class="nav flex-column mt-2">
         @foreach ($navItems as $item)
+            {{-- A small heading (with a line) whenever a new group of menu items starts --}}
+            @if ($loop->first || $item['group'] !== $navItems[$loop->index - 1]['group'])
+                <div class="nav-section-label">{{ $item['group'] }}</div>
+            @endif
             <a href="{{ route($item['route']) }}"
-               class="nav-link {{ request()->routeIs($item['match']) ? 'active' : '' }}">
+               class="nav-link {{ request()->routeIs($item['match']) ? 'active' : '' }}"
+               data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="{{ $item['desc'] }}">
                 <i class="bi {{ $item['icon'] }}"></i> {{ $item['label'] }}
             </a>
         @endforeach
@@ -301,6 +320,10 @@
     backdrop?.addEventListener('click', toggleSidebar);
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Hover tooltips on the menu: a short line about what each tab is for
+    document.querySelectorAll('.sidebar [data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el, { trigger: 'hover', container: 'body' }));
+</script>
 
 </body>
 </html>
