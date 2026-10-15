@@ -101,15 +101,29 @@
                             @endif
                         </div>
                         <div class="table-responsive">
+                            <style>
+                                /* Every column has a fixed share of the width, so the Size / Color drop-downs, Price, Low at and
+                                   Starting stock fields are all the same height and their words ("none", "default") are always fully visible. */
+                                #variants-table { table-layout: fixed; width: 100%; min-width: 760px; }
+                                #variants-table th { white-space: nowrap; }
+                                #variants-table th, #variants-table td { vertical-align: middle; }
+                                #variants-table .form-select, #variants-table .form-control { width: 100%; height: 34px; }
+                                #variants-table .form-select { padding-right: 1.75rem; text-overflow: ellipsis; }
+                                #variants-table .remove-variant { margin: 0 auto; }
+                            </style>
                             <table class="table table-sm align-middle" id="variants-table">
+                                <colgroup>
+                                    <col style="width:19%"><col style="width:16%"><col style="width:16%"><col style="width:13%">
+                                    <col style="width:11%"><col style="width:15%"><col style="width:10%">
+                                </colgroup>
                                 <thead>
                                     <tr>
-                                        <th style="width:170px">Model</th>
+                                        <th>Model</th>
                                         <th>Size <button type="button" class="btn btn-outline-success btn-sm py-0 px-1 ms-1" data-quick="sizes" title="Add a new size" aria-label="Add a new size"><i class="bi bi-plus-lg"></i></button></th>
                                         <th>Color <button type="button" class="btn btn-outline-success btn-sm py-0 px-1 ms-1" data-quick="colors" title="Add a new color" aria-label="Add a new color"><i class="bi bi-plus-lg"></i></button></th>
-                                        <th style="width:100px">Price</th>
-                                        <th style="width:80px">Low at</th>
-                                        <th style="width:110px">Starting stock</th>
+                                        <th>Price</th>
+                                        <th>Low at</th>
+                                        <th>Starting stock</th>
                                         <th></th>
                                     </tr>
                                 </thead>
@@ -148,7 +162,7 @@
         function pickerHtml(type, name, value) {
             const list = LISTS[type].includes(value) || !value ? LISTS[type] : [...LISTS[type], value];
             return `<select name="${name}" class="form-select form-select-sm ${type}-select" data-type="${type}">
-                <option value="">&mdash; none &mdash;</option>
+                <option value="">None</option>
                 ${list.map(x => `<option value="${esc(x)}" ${x === value ? 'selected' : ''}>${esc(x)}</option>`).join('')}
             </select>`;
         }
@@ -164,10 +178,10 @@
                 </td>
                 <td>${pickerHtml('sizes', `variants[${i}][size]`, v.size)}</td>
                 <td>${pickerHtml('colors', `variants[${i}][color]`, v.color)}</td>
-                <td><input type="number" step="0.01" min="0" name="variants[${i}][price]" class="form-control form-control-sm" value="${esc(v.price)}" placeholder="default"></td>
-                <td><input type="number" min="0" name="variants[${i}][low_stock_threshold]" class="form-control form-control-sm" value="${esc(v.low_stock_threshold ?? 5)}" required></td>
+                <td><input type="number" step="0.01" min="0" name="variants[${i}][price]" class="form-control form-control-sm" value="${esc(v.price)}" placeholder="Default" aria-label="Price"></td>
+                <td><input type="number" min="0" name="variants[${i}][low_stock_threshold]" class="form-control form-control-sm" value="${esc(v.low_stock_threshold ?? 5)}" placeholder="5" required aria-label="Low stock at"></td>
                 <td>${isNew
-                    ? `<input type="number" min="1" max="1000000" name="variants[${i}][initial_stock]" class="form-control form-control-sm" value="${esc(v.initial_stock ?? 1)}" placeholder="1 or more" required aria-label="Starting stock">`
+                    ? `<input type="number" min="1" max="1000000" name="variants[${i}][initial_stock]" class="form-control form-control-sm" value="${esc(v.initial_stock ?? 1)}" placeholder="Stock" required aria-label="Starting stock">`
                     : `<span class="text-muted">${esc(v.quantity ?? 0)}</span>`}</td>
                 <td>${isNew ? '<button type="button" class="btn btn-outline-danger btn-icon remove-variant" title="Remove this row" aria-label="Remove this row"><i class="bi bi-x-lg"></i></button>' : ''}</td>`;
             tbody.appendChild(tr);
