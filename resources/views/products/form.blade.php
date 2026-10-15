@@ -35,7 +35,7 @@
                                 <img src="{{ $product->image_url }}" id="photo-preview" class="img-fluid rounded mb-2" style="max-height: 200px" alt="">
                             @else
                                 @php $ph = $product->placeholder; @endphp
-                                <div id="photo-placeholder" class="ph-thumb mb-2 mx-auto" style="width:200px;height:200px;font-size:96px" title="{{ $ph['tip'] }}" role="img" aria-label="{{ $ph['tip'] }}">{{ $ph['icon'] }}</div>
+                                <div id="photo-placeholder" class="ph-thumb mb-2 mx-auto" style="width:200px;height:200px;font-size:96px" data-tip="{{ $ph['tip'] }}" role="img" aria-label="{{ $ph['tip'] }}"><i class="bi bi-image"></i></div>
                                 <img src="" id="photo-preview" class="img-fluid rounded mb-2 d-none" style="max-height: 200px" alt="">
                             @endif
                             <input type="file" name="image" id="photo-input" accept="image/*" class="form-control form-control-sm">

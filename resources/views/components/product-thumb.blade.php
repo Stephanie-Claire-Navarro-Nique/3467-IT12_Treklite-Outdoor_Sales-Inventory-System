@@ -7,6 +7,6 @@
          class="rounded" style="object-fit:cover;width:{{ $size }}px;height:{{ $size }}px;flex-shrink:0">
 @else
     @php $ph = $product->placeholder; @endphp
-    <div class="ph-thumb" role="img" aria-label="{{ $ph['tip'] }}" title="{{ $ph['tip'] }}"
-         style="width:{{ $size }}px;height:{{ $size }}px;font-size:{{ (int) round($size * 0.5) }}px">{{ $ph['icon'] }}</div>
+    <div class="ph-thumb" role="img" aria-label="{{ $ph['tip'] }}" data-tip="{{ $ph['tip'] }}"
+         style="width:{{ $size }}px;height:{{ $size }}px;font-size:{{ (int) round($size * 0.5) }}px"><i class="bi bi-image"></i></div>
 @endif

@@ -217,8 +217,17 @@
             border-radius: .4rem;
             background: linear-gradient(135deg, #eef2ef, #dfe7e2);
             border: 1px dashed #b9c6be;
+            color: #8a9a91;
             cursor: help;
             user-select: none;
+        }
+
+        /* The one fast tooltip (see script at the bottom): shows at once, can never get stuck */
+        .fast-tip {
+            position: fixed; z-index: 2000; display: none; pointer-events: none;
+            max-width: 240px; padding: .3rem .6rem; border-radius: .35rem;
+            background: #212529; color: #fff; font-size: .8rem; line-height: 1.3; text-align: center;
+            box-shadow: 0 .2rem .6rem rgba(0,0,0,.25);
         }
 
         /* Table footer: "Showing 1-10 of 57" + rows per page + page buttons */
@@ -364,9 +373,44 @@
     // Hover tooltips on the menu: a short line about what each tab is for
     document.querySelectorAll('.sidebar [data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el, { trigger: 'hover', container: 'body' }));
 
-    // Tooltip for every icon button (and placeholder picture) that has a title="..." - also the ones created later by scripts.
-    new bootstrap.Tooltip(document.body, { selector: '.btn[title], .ph-thumb[title], .placeholder-img[title], .cart-thumb[title], span[title]', container: 'body', trigger: 'hover focus' });
-    document.addEventListener('click', () => document.querySelectorAll('.tooltip').forEach(t => t.remove()));   // never leave a tooltip stuck after a click
+    // One small tooltip for every icon button and placeholder picture (anything with title="..." or data-tip="...").
+    // It is a single element that follows the mouse target, appears instantly and is hidden on mouse-out, click,
+    // scroll and whenever a table re-pages, so it can never stay on screen.
+    (function () {
+        const tip = document.createElement('div');
+        tip.className = 'fast-tip';
+        document.body.appendChild(tip);
+        let current = null;
+
+        const hide = () => { tip.style.display = 'none'; current = null; };
+        const textOf = el => {
+            if (el.hasAttribute('title')) { el.setAttribute('data-tip', el.getAttribute('title')); el.removeAttribute('title'); }   // no slow browser tooltip
+            return el.getAttribute('data-tip') || '';
+        };
+
+        document.addEventListener('mouseover', e => {
+            const el = e.target.closest('[title], [data-tip]');
+            if (!el || el.matches('[data-bs-toggle="tooltip"]') || el.closest('.sidebar')) return;
+            const text = textOf(el);
+            if (!text) { hide(); return; }
+            if (el === current) return;
+            current = el;
+            tip.textContent = text;
+            tip.style.display = 'block';
+            const r = el.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+            let top = r.top - h - 6;
+            if (top < 4) top = r.bottom + 6;                                              // no room above: show below
+            const left = Math.min(Math.max(4, r.left + r.width / 2 - w / 2), window.innerWidth - w - 4);
+            tip.style.top = top + 'px';
+            tip.style.left = left + 'px';
+        });
+        document.addEventListener('mouseout', e => {
+            if (current && !current.contains(e.relatedTarget)) hide();
+        });
+        ['click', 'keydown', 'wheel', 'touchstart', 'cf:filtered'].forEach(ev => document.addEventListener(ev, hide, true));
+        window.addEventListener('scroll', hide, true);
+        window.addEventListener('blur', hide);
+    })();
 </script>
 
 <script>

@@ -165,8 +165,7 @@ class SaleController extends Controller
                 'category' => $p->category?->name,
                 'brand'    => $p->brand?->name,
                 'image'    => $p->image_url,
-                'ph_icon'  => $p->placeholder['icon'],   // generic picture + tooltip when there is no photo
-                'ph_tip'   => $p->placeholder['tip'],
+                'ph_tip'   => $p->placeholder['tip'],   // tooltip of the default placeholder picture
                 'variants' => $p->variants->map(fn ($v) => [
                     'id'    => $v->id,
                     'size'  => $v->size?->name,

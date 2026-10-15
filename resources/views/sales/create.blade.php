@@ -13,7 +13,7 @@
         .product-card:hover { border-color: #1e5b31; box-shadow: 0 .4rem .9rem rgba(0,0,0,.12); transform: translateY(-2px); }
         .product-card.out { opacity: .55; cursor: not-allowed; }
         .product-img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; }
-        .placeholder-img { display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #eef2ef, #dfe7e2); font-size: 3.5rem; line-height: 1; cursor: help; user-select: none; }
+        .placeholder-img { display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #eef2ef, #dfe7e2); font-size: 3.5rem; line-height: 1; color: #8a9a91; cursor: help; user-select: none; }
         .name-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.5em; line-height: 1.25; }
         .opt-lines { min-height: 2.6em; font-size: .75rem; line-height: 1.3; }
         .price { color: #ee4d2d; font-weight: 700; }
@@ -266,7 +266,7 @@
                 const sizes = uniq(p, 'size'), colors = uniq(p, 'color');
                 const img = p.image
                     ? `<img src="${esc(p.image)}" class="product-img" alt="">`
-                    : `<div class="product-img placeholder-img" title="${esc(p.ph_tip)}" role="img" aria-label="${esc(p.ph_tip)}">${p.ph_icon}</div>`;
+                    : `<div class="product-img placeholder-img" data-tip="${esc(p.ph_tip)}" role="img" aria-label="${esc(p.ph_tip)}"><i class="bi bi-image"></i></div>`;
                 const badge = stock <= 0 ? '<span class="badge bg-secondary stock-badge">Sold out</span>'
                             : (low ? '<span class="badge bg-warning text-dark stock-badge">Low stock</span>' : '');
 
@@ -319,7 +319,7 @@
                 $('modal-title').textContent = p.name;
                 $('modal-image').innerHTML = p.image
                     ? `<img src="${esc(p.image)}" class="img-fluid rounded" alt="">`
-                    : `<div class="product-img placeholder-img rounded" title="${esc(p.ph_tip)}" role="img" aria-label="${esc(p.ph_tip)}">${p.ph_icon}</div>`;
+                    : `<div class="product-img placeholder-img rounded" data-tip="${esc(p.ph_tip)}" role="img" aria-label="${esc(p.ph_tip)}"><i class="bi bi-image"></i></div>`;
 
                 const first = p.variants.find(inStock);
                 selSize = first.size;
@@ -419,7 +419,7 @@
                     const v = VARIANTS[l.id];
                     const thumb = v.product.image
                         ? `<img src="${esc(v.product.image)}" class="cart-thumb" alt="">`
-                        : `<div class="cart-thumb d-flex align-items-center justify-content-center fs-4" title="${esc(v.product.ph_tip)}" role="img" aria-label="${esc(v.product.ph_tip)}">${v.product.ph_icon}</div>`;
+                        : `<div class="cart-thumb d-flex align-items-center justify-content-center fs-4" data-tip="${esc(v.product.ph_tip)}" role="img" aria-label="${esc(v.product.ph_tip)}"><i class="bi bi-image"></i></div>`;
                     return `<div class="d-flex gap-2 border-bottom py-2">
                         ${thumb}
                         <div class="flex-grow-1">
