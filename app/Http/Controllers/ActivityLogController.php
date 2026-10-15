@@ -10,17 +10,18 @@ class ActivityLogController extends Controller
 {
     public function index(Request $request)
     {
-        $q      = trim((string) $request->query('q'));
+        // Only used to pre-select the Action filter when the page is opened from a link.
         $action = is_string($request->query('action')) && array_key_exists($request->query('action'), ActivityLog::ACTION_LABELS)
             ? $request->query('action')
             : '';
+        $q = '';
 
+        // The latest 2,000 lines are loaded ONCE. Search, the Action filter and the paging all work in the browser,
+        // so changing a filter never asks the server again.
         $logs = ActivityLog::with('user')
-            ->when($action !== '', fn ($w) => $w->where('action', $action))
-            ->when($q !== '', fn ($w) => $w->where('description', 'like', "%{$q}%"))
             ->latest('id')
-            ->paginate(30)
-            ->withQueryString();
+            ->limit(2000)
+            ->get();
 
         return view('activity.index', compact('logs', 'q', 'action'));
     }

@@ -15,7 +15,7 @@
                         Create one at the end of each business day, then <strong>download it and keep a copy on an external drive</strong>.</p>
                     <form method="POST" action="{{ route('backup.store') }}">
                         @csrf
-                        <button class="btn btn-success"><i class="bi bi-database-add"></i> Create backup now</button>
+                        <button class="btn btn-success btn-icon" title="Create backup now" aria-label="Create backup now"><i class="bi bi-database-add"></i></button>
                     </form>
                     <div class="small text-muted mt-2">
                         Product and payment photos are saved inside the database, so they are inside the backup file too (the file can be large when there are many photos).
@@ -27,21 +27,24 @@
             {{-- Saved backups --}}
             <div class="card shadow-sm">
                 <div class="card-header fw-bold">Saved backups on the server</div>
+                <div data-ctable data-per-page="10" data-compact>
                 <table class="table mb-0 align-middle">
                     <thead><tr><th>File</th><th>Created</th><th class="text-end">Size</th><th class="text-center" style="width:110px">Action</th></tr></thead>
                     <tbody>
                         @forelse ($backups as $b)
-                            <tr>
+                            <tr data-row>
                                 <td class="small">{{ $b['name'] }}</td>
                                 <td class="small">{{ $b['modified']->format('M d, Y h:i A') }}</td>
                                 <td class="text-end small">{{ number_format($b['size'] / 1024, 1) }} KB</td>
-                                <td class="text-center"><a href="{{ route('backup.download', $b['name']) }}" class="btn btn-sm btn-outline-secondary" title="Download" aria-label="Download"><i class="bi bi-download"></i></a></td>
+                                <td class="text-center"><a href="{{ route('backup.download', $b['name']) }}" class="btn btn-outline-secondary btn-icon" title="Download" aria-label="Download"><i class="bi bi-download"></i></a></td>
                             </tr>
                         @empty
                             <tr><td colspan="4" class="text-center text-muted py-4">No backups yet.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
+                <div data-pager class="px-2 pb-2"></div>
+                </div>
             </div>
         </div>
 
@@ -68,8 +71,8 @@
                             <label class="form-label small mb-1">Type <strong>RESTORE</strong> to confirm</label>
                             <input type="text" name="confirmation" class="form-control form-control-sm" required autocomplete="off">
                         </div>
-                        <button class="btn btn-danger w-100"
-                                onclick="return confirm('Replace ALL current data with this backup?');">Restore database</button>
+                        <button class="btn btn-danger btn-icon" title="Restore database" aria-label="Restore database"
+                                onclick="return confirm('Replace ALL current data with this backup?');"><i class="bi bi-arrow-counterclockwise"></i></button>
                     </form>
                 </div>
             </div>

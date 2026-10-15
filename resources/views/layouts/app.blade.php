@@ -194,6 +194,46 @@
         .sidebar a.profile:hover, .sidebar .profile.active { background: rgba(255, 255, 255, .14); }
         .sidebar .profile .bi-person-circle { font-size: 2rem; line-height: 1; }
 
+        /* ===== Uniform icon-only buttons (every button except the side menu is an icon with a tooltip) ===== */
+        .btn.btn-icon {
+            width: 38px;
+            height: 34px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.05rem;
+            line-height: 1;
+            flex: 0 0 auto;
+        }
+
+        /* Product with no photo: a generic picture of that kind of product (the tooltip says what it is) */
+        .ph-thumb {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            line-height: 1;
+            border-radius: .4rem;
+            background: linear-gradient(135deg, #eef2ef, #dfe7e2);
+            border: 1px dashed #b9c6be;
+            cursor: help;
+            user-select: none;
+        }
+
+        /* Table footer: "Showing 1-10 of 57" + rows per page + page buttons */
+        .ct-pager { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .5rem; padding: .6rem .25rem 0; }
+        .ct-pager .pagination { margin: 0; }
+        .ct-pager .page-link { color: #1e5b31; }
+        .ct-pager .page-item.active .page-link { background: #1e5b31; border-color: #1e5b31; color: #fff; }
+        .ct-pager .page-item.disabled .page-link { color: #9aa6a0; }
+
+        /* Printing: paging is for the screen only - a printed report / receipt always contains every row */
+        @media print {
+            [data-row].d-none { display: revert !important; }
+            [data-pager], .ct-pager { display: none !important; }
+        }
+
         @keyframes toggle-in {
             from { opacity: 0; transform: translateX(-8px); }
             to   { opacity: 1; transform: translateX(0); }
@@ -323,6 +363,116 @@
 <script>
     // Hover tooltips on the menu: a short line about what each tab is for
     document.querySelectorAll('.sidebar [data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el, { trigger: 'hover', container: 'body' }));
+
+    // Tooltip for every icon button (and placeholder picture) that has a title="..." - also the ones created later by scripts.
+    new bootstrap.Tooltip(document.body, { selector: '.btn[title], .ph-thumb[title], .placeholder-img[title], .cart-thumb[title], span[title]', container: 'body', trigger: 'hover focus' });
+    document.addEventListener('click', () => document.querySelectorAll('.tooltip').forEach(t => t.remove()));   // never leave a tooltip stuck after a click
+</script>
+
+<script>
+    /*
+     * Client-side tables: the page loads its rows ONCE, then searching, filtering and paging all happen in the browser.
+     * No new request goes to the server when a filter changes (less load, instant results).
+     *
+     * Markup:
+     *   <div data-ctable data-per-page="10">      (add data-compact to hide the "rows per page" box)
+     *       <input data-cf="q">  <select data-cf="brand">  <input type="date" data-cf="from"> ...   (filters)
+     *       <button data-cf-clear>                                                                    (reset filters)
+     *       <table> <tr data-row data-search="lower-case words" data-brand="..." data-date="2026-10-15"> ... </table>
+     *       <tr data-empty> ... </tr>   <div data-pager></div>
+     *   </div>
+     *   q = text search in data-search | from / to = compare with data-date | any other key = must equal data-<key>.
+     *   A checkbox filter needs data-<key>="1" on the row when it applies.
+     */
+    (function () {
+        function initTable(root) {
+            const rows   = [...root.querySelectorAll('[data-row]')];
+            const ctrls  = [...root.querySelectorAll('[data-cf]')];
+            const pager  = root.querySelector('[data-pager]');
+            const empty  = root.querySelector('[data-empty]');
+            let per = parseInt(root.dataset.perPage || '10', 10), page = 1, matched = rows;
+
+            const passes = row => ctrls.every(c => {
+                const k = c.dataset.cf, d = row.dataset;
+                const v = c.type === 'checkbox' ? (c.checked ? '1' : '') : c.value.trim();
+                if (v === '') return true;
+                if (k === 'q')    return (d.search || '').includes(v.toLowerCase());
+                if (k === 'from') return !!d.date && d.date >= v;
+                if (k === 'to')   return !!d.date && d.date <= v;
+                const any = d[k + 'Any'];                       // a row can match several values, e.g. data-status-any="out|low"
+                if (any !== undefined) return any.split('|').includes(v);
+                return d[k] === v;
+            });
+
+            function pageList(total) {
+                const out = [];
+                for (let i = 1; i <= total; i++) {
+                    if (i === 1 || i === total || Math.abs(i - page) <= 1) out.push(i);
+                    else if (out[out.length - 1] !== '…') out.push('…');
+                }
+                return out;
+            }
+
+            function render() {
+                const total = Math.max(1, Math.ceil(matched.length / per));
+                page = Math.min(page, total);
+                const start = (page - 1) * per, end = start + per;
+
+                const show = new Set(matched.slice(start, end));
+                rows.forEach(r => r.classList.toggle('d-none', !show.has(r)));
+                if (empty) empty.classList.toggle('d-none', matched.length > 0);
+
+                if (pager) {
+                    if (!matched.length) { pager.innerHTML = ''; }
+                    else {
+                        const a = start + 1, b = Math.min(end, matched.length);
+                        pager.innerHTML = `<div class="ct-pager">
+                            <div class="small text-muted">Showing ${a}–${b} of ${matched.length}</div>
+                            <div class="d-flex align-items-center gap-2">
+                                ${root.hasAttribute('data-compact') ? '' : `<select class="form-select form-select-sm" style="width:auto" data-ct-size title="Rows per page" aria-label="Rows per page">
+                                    ${[10, 25, 50, 100].map(n => `<option value="${n}" ${n === per ? 'selected' : ''}>${n} / page</option>`).join('')}
+                                </select>`}
+                                <ul class="pagination pagination-sm">
+                                    <li class="page-item ${page === 1 ? 'disabled' : ''}"><button type="button" class="page-link" data-ct-go="${page - 1}" title="Previous page" aria-label="Previous page"><i class="bi bi-chevron-left"></i></button></li>
+                                    ${pageList(total).map(n => n === '…'
+                                        ? '<li class="page-item disabled"><span class="page-link">…</span></li>'
+                                        : `<li class="page-item ${n === page ? 'active' : ''}"><button type="button" class="page-link" data-ct-go="${n}">${n}</button></li>`).join('')}
+                                    <li class="page-item ${page === total ? 'disabled' : ''}"><button type="button" class="page-link" data-ct-go="${page + 1}" title="Next page" aria-label="Next page"><i class="bi bi-chevron-right"></i></button></li>
+                                </ul>
+                            </div>
+                        </div>`;
+                    }
+                }
+                root.dispatchEvent(new CustomEvent('cf:filtered', { detail: { rows, matched } }));
+            }
+
+            function apply() { matched = rows.filter(passes); page = 1; render(); }
+
+            let timer;
+            ctrls.forEach(c => {
+                c.addEventListener(c.tagName === 'SELECT' || c.type === 'checkbox' || c.type === 'date' ? 'change' : 'input',
+                    () => { clearTimeout(timer); timer = setTimeout(apply, c.type === 'search' || c.type === 'text' ? 120 : 0); });
+            });
+            root.querySelectorAll('[data-cf-clear]').forEach(b => b.addEventListener('click', () => {
+                ctrls.forEach(c => { if (c.type === 'checkbox') c.checked = false; else c.value = ''; });
+                apply();
+            }));
+            // Enter inside a filter box must not reload the page
+            root.querySelectorAll('form[data-cf-form]').forEach(f => f.addEventListener('submit', e => e.preventDefault()));
+
+            if (pager) pager.addEventListener('click', e => {
+                const go = e.target.closest('[data-ct-go]');
+                if (go) { page = parseInt(go.dataset.ctGo, 10) || 1; render(); root.scrollIntoView({ block: 'nearest' }); }
+            });
+            if (pager) pager.addEventListener('change', e => {
+                if (e.target.matches('[data-ct-size]')) { per = parseInt(e.target.value, 10); page = 1; render(); }
+            });
+
+            apply();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => document.querySelectorAll('[data-ctable]').forEach(initTable));
+    })();
 </script>
 
 </body>

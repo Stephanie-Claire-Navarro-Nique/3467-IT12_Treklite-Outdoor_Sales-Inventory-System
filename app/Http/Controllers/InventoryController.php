@@ -49,13 +49,28 @@ class InventoryController extends Controller
                 ->selectRaw('COALESCE(SUM(v.quantity), 0) as units')
                 ->selectRaw('COALESCE(SUM(CASE WHEN v.id IS NOT NULL AND v.quantity <= 0 THEN 1 ELSE 0 END), 0) as out_count')
                 ->selectRaw('COALESCE(SUM(CASE WHEN v.quantity > 0 AND v.quantity <= v.low_stock_threshold THEN 1 ELSE 0 END), 0) as low_count')
+                ->selectRaw('COALESCE(SUM(CASE WHEN v.quantity > v.low_stock_threshold THEN 1 ELSE 0 END), 0) as ok_count')
                 ->groupBy('brand_name')
                 ->orderBy('brand_name')
                 ->get();
 
+            // Words each brand card can be found by (brand, model, category, size, color). The brand overview is loaded ONCE
+            // and its search box / Status filter work in the browser, so they never query the server again.
+            $brandWords = Product::where('is_active', true)
+                ->with('brand', 'category', 'variants.size', 'variants.color')
+                ->get()
+                ->groupBy(fn ($p) => $p->brand?->name ?? '')
+                ->map(fn ($g) => mb_strtolower(
+                    $g->flatMap(fn ($p) => array_merge(
+                        [$p->brand?->name, $p->name, $p->category?->name],
+                        $p->variants->flatMap(fn ($v) => [$v->size?->name, $v->color?->name])->all()
+                    ))->filter()->unique()->implode(' ')
+                ));
+
             return view('inventory.index', [
                 'mode'   => 'brands',
                 'brands' => $brands,
+                'brandWords' => $brandWords,
                 'q' => '', 'brand' => '', 'category' => '', 'size' => '', 'color' => '', 'status' => '', 'product' => null, 'all' => false,
             ]);
         }
@@ -77,24 +92,12 @@ class InventoryController extends Controller
             ->select('category_id'))
             ->orderBy('name')->pluck('name');
 
+        // Every item of this brand / product is loaded ONCE. The search box, the category / size / color / status
+        // filters and the paging all work in the browser (data-ctable), so they never query the server again.
         $variants = (clone $scope)->with('product.brand', 'product.category')
-            ->when($category !== '', fn ($w) => $w->whereHas('product.category', fn ($c) => $c->where('name', $category)))
-            ->when($size !== '', fn ($w) => $w->whereHas('size', fn ($z) => $z->where('name', $size)))
-            ->when($color !== '', fn ($w) => $w->whereHas('color', fn ($c) => $c->where('name', $color)))
-            ->when($status === 'out', fn ($w) => $w->where('quantity', '<=', 0))
-            ->when($status === 'low', fn ($w) => $w->where('quantity', '>', 0)->whereColumn('quantity', '<=', 'low_stock_threshold'))
-            ->when($status === 'ok', fn ($w) => $w->whereColumn('quantity', '>', 'low_stock_threshold'))
-            ->when($q !== '', fn ($w) => $w->where(function ($s) use ($q) {
-                $s->whereHas('size', fn ($z) => $z->where('name', 'like', "%{$q}%"))
-                  ->orWhereHas('color', fn ($c) => $c->where('name', 'like', "%{$q}%"))
-                  ->orWhereHas('product', fn ($p) => $p->where('name', 'like', "%{$q}%")
-                      ->orWhereHas('brand', fn ($b) => $b->where('name', 'like', "%{$q}%"))
-                      ->orWhereHas('category', fn ($c) => $c->where('name', 'like', "%{$q}%")));
-            }))
             ->orderBy('product_id')
             ->orderBy('id')
-            ->paginate(25)
-            ->withQueryString();
+            ->get();
 
         // Brand drop-down for the "All items" view (so the full list can still be narrowed to one brand).
         $brandOptions = Brand::orderBy('name')->pluck('name');
@@ -180,16 +183,15 @@ class InventoryController extends Controller
         $variant = $request->filled('variant') ? ProductVariant::with('product')->find((int) $request->query('variant')) : null;
         $product = $request->filled('product') ? Product::find((int) $request->query('product')) : null;
         $type    = in_array($request->query('type'), ['receive', 'count', 'sale', 'void'], true) ? $request->query('type') : '';
-        $issues  = $request->boolean('issues');
+        $issues  = $request->boolean('issues');   // only used to pre-select the filters
 
+        // Latest 2,000 movements are loaded once; type / "did not match" filters and paging happen in the browser.
         $movements = StockMovement::with('variant.product', 'user')
             ->when($variant, fn ($w) => $w->where('variant_id', $variant->id))
             ->when($product, fn ($w) => $w->whereHas('variant', fn ($v) => $v->where('product_id', $product->id)))
-            ->when($type !== '', fn ($w) => $w->where('type', $type))
-            ->when($issues, fn ($w) => $w->where('type', 'count')->where('quantity_change', '!=', 0))
             ->latest('id')
-            ->paginate(25)
-            ->withQueryString();
+            ->limit(2000)
+            ->get();
 
         return view('inventory.history', compact('movements', 'variant', 'product', 'type', 'issues'));
     }

@@ -119,7 +119,7 @@
                 <label for="to">To</label>
                 <input type="date" id="to" name="to" class="form-control form-control-sm" value="{{ $to->format('Y-m-d') }}" max="{{ now()->toDateString() }}">
             </div>
-            <button class="btn btn-sm {{ $period === 'custom' ? 'btn-success' : 'btn-outline-success' }}">Apply</button>
+            <button class="btn btn-icon {{ $period === 'custom' ? 'btn-success' : 'btn-outline-success' }}" title="Apply dates" aria-label="Apply dates"><i class="bi bi-check-lg"></i></button>
         </form>
     </div>
 
@@ -179,6 +179,8 @@
         </div>
     </div>
 
+    {{-- Shown 10 per page on screen; the printed report always has every row. --}}
+    <div data-ctable data-per-page="10">
     <div class="card shadow-sm">
         <table class="table mb-0">
             <thead>
@@ -193,7 +195,7 @@
             </thead>
             <tbody>
                 @forelse ($sales as $sale)
-                    <tr>
+                    <tr data-row>
                         <td>{{ $sale->invoice_number }}</td>
                         <td>{{ $sale->sold_at->format('M d, Y h:i A') }}</td>
                         <td>{{ $sale->customer_name }}</td>
@@ -206,6 +208,8 @@
                 @endforelse
             </tbody>
         </table>
+    </div>
+    <div data-pager class="no-print"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>

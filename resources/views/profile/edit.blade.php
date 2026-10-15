@@ -11,7 +11,7 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h3 class="mb-0">My Profile</h3>
         @if ($user->hasFullAccess())
-            <a href="{{ route('users.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-people"></i> Manage Staff Accounts</a>
+            <a href="{{ route('users.index') }}" class="btn btn-outline-secondary btn-icon" title="Manage Staff Accounts" aria-label="Manage Staff Accounts"><i class="bi bi-people"></i></a>
         @endif
     </div>
 
@@ -63,7 +63,7 @@
                         <div class="form-text">Your role is fixed. It cannot be changed here.</div>
                     </div>
 
-                    <button class="btn btn-success">Save changes</button>
+                    <button class="btn btn-success btn-icon" title="Save changes" aria-label="Save changes"><i class="bi bi-check-lg"></i></button>
                 </form>
             </div>
 
@@ -101,7 +101,7 @@
                         </div>
                     </div>
 
-                    <button class="btn btn-success">Change password</button>
+                    <button class="btn btn-success btn-icon" title="Change password" aria-label="Change password"><i class="bi bi-key"></i></button>
                 </form>
             </div>
         </div>

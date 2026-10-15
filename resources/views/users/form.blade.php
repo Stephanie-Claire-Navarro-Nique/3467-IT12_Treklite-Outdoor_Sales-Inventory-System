@@ -54,8 +54,8 @@
                     <input type="password" name="password_confirmation" class="form-control" {{ $editing ? '' : 'required' }} autocomplete="new-password">
                 </div>
 
-                <button class="btn btn-success">{{ $editing ? 'Save changes' : 'Create account' }}</button>
-                <a href="{{ route('users.index') }}" class="btn btn-outline-secondary">Cancel</a>
+                <button class="btn btn-success btn-icon" title="{{ $editing ? 'Save changes' : 'Create account' }}" aria-label="{{ $editing ? 'Save changes' : 'Create account' }}"><i class="bi bi-check-lg"></i></button>
+                <a href="{{ route('users.index') }}" class="btn btn-outline-secondary btn-icon" title="Cancel" aria-label="Cancel"><i class="bi bi-x-lg"></i></a>
             </form>
         </div>
     </div>

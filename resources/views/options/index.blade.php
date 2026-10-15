@@ -4,7 +4,6 @@
 
 @section('content')
     <style>
-        .btn-icon { min-width: 34px; height: 31px; padding: 0 .6rem; display: inline-flex; align-items: center; justify-content: center; gap: .35rem; }
         .opt-tabs .nav-link { color: #1e5b31; }
         .opt-tabs .nav-link.active { background: #1e5b31; color: #fff; }
         .opt-tabs .badge { font-weight: 500; }
@@ -12,7 +11,7 @@
 
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h3 class="mb-0">Item Options</h3>
-        <a href="{{ route('products.index') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back to Products</a>
+        <a href="{{ route('products.index') }}" class="btn btn-outline-secondary btn-icon" title="Back to Products" aria-label="Back to Products"><i class="bi bi-arrow-left"></i></a>
     </div>
 
     <div class="alert alert-light border small py-2">
@@ -38,8 +37,9 @@
                 <div class="card shadow-sm">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span class="fw-bold">{{ $t['many'] }}</span>
-                        <button type="button" class="btn btn-success btn-sm" data-opt-add="{{ $key }}"><i class="bi bi-plus-lg"></i> Add {{ $t['one'] }}</button>
+                        <button type="button" class="btn btn-success btn-icon" data-opt-add="{{ $key }}" title="Add {{ strtolower($t['one']) }}" aria-label="Add {{ strtolower($t['one']) }}"><i class="bi bi-plus-lg"></i></button>
                     </div>
+                    <div data-ctable data-per-page="10">
                     <div class="table-responsive">
                         <table class="table mb-0 align-middle">
                             <thead>
@@ -53,7 +53,7 @@
                             </thead>
                             <tbody>
                                 @forelse ($lists[$key] as $row)
-                                    <tr class="{{ $row->is_active ? '' : 'table-light text-muted' }}">
+                                    <tr class="{{ $row->is_active ? '' : 'table-light text-muted' }}" data-row>
                                         @if ($key === 'sizes')<td>{{ $row->sort_order }}</td>@endif
                                         <td class="fw-semibold">{{ $row->name }}</td>
                                         <td class="text-center">
@@ -68,29 +68,32 @@
                                         </td>
                                         <td class="text-center">
                                             <div class="d-inline-flex gap-1">
-                                                <button type="button" class="btn btn-sm btn-outline-secondary btn-icon" title="Rename / edit" aria-label="Edit"
+                                                <button type="button" class="btn btn-outline-secondary btn-icon" title="Rename / edit" aria-label="Edit"
                                                         data-opt-edit="{{ $key }}" data-id="{{ $row->id }}" data-name="{{ $row->name }}" data-order="{{ $row->sort_order ?? '' }}">
                                                     <i class="bi bi-pencil-square"></i>
                                                 </button>
-                                                <button type="button" class="btn btn-sm {{ $row->is_active ? 'btn-outline-warning' : 'btn-outline-success' }} btn-icon"
+                                                <button type="button" class="btn {{ $row->is_active ? 'btn-outline-warning' : 'btn-outline-success' }} btn-icon"
                                                         title="{{ $row->is_active ? 'Disable (hide from new products)' : 'Enable again' }}" aria-label="Enable or disable"
                                                         data-opt-toggle="{{ $key }}" data-id="{{ $row->id }}">
                                                     <i class="bi {{ $row->is_active ? 'bi-eye-slash' : 'bi-eye' }}"></i>
                                                 </button>
-                                                <button type="button" class="btn btn-sm btn-outline-danger btn-icon" aria-label="Delete"
-                                                        title="{{ $row->used_count > 0 ? 'In use - cannot delete. Disable it instead.' : 'Delete' }}"
-                                                        data-opt-delete="{{ $key }}" data-id="{{ $row->id }}" data-name="{{ $row->name }}" data-used="{{ $row->used_count }}"
-                                                        @disabled($row->used_count > 0)>
-                                                    <i class="bi bi-trash"></i>
-                                                </button>
+                                                <span class="d-inline-block" title="{{ $row->used_count > 0 ? 'In use - cannot delete. Disable it instead.' : 'Delete' }}">
+                                                    <button type="button" class="btn btn-outline-danger btn-icon" aria-label="Delete"
+                                                            data-opt-delete="{{ $key }}" data-id="{{ $row->id }}" data-name="{{ $row->name }}" data-used="{{ $row->used_count }}"
+                                                            @disabled($row->used_count > 0)>
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </span>
                                             </div>
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="5" class="text-center text-muted py-4">No {{ strtolower($t['many']) }} yet. Press <strong>Add {{ $t['one'] }}</strong>.</td></tr>
+                                    <tr><td colspan="5" class="text-center text-muted py-4">No {{ strtolower($t['many']) }} yet. Press the <i class="bi bi-plus-lg"></i> icon above.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
+                    </div>
+                    <div data-pager></div>
                     </div>
                 </div>
             </div>
@@ -116,8 +119,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success" id="opt-save">Save</button>
+                    <button type="button" class="btn btn-outline-secondary btn-icon" data-bs-dismiss="modal" title="Cancel" aria-label="Cancel"><i class="bi bi-x-lg"></i></button>
+                    <button type="submit" class="btn btn-success btn-icon" id="opt-save" title="Save" aria-label="Save"><i class="bi bi-check-lg"></i></button>
                 </div>
             </form>
         </div>
@@ -136,8 +139,8 @@
                     Permanently delete <strong id="opt-del-name"></strong>? This cannot be undone.
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-danger" id="opt-del-confirm">Delete</button>
+                    <button type="button" class="btn btn-outline-secondary btn-icon" data-bs-dismiss="modal" title="Cancel" aria-label="Cancel"><i class="bi bi-x-lg"></i></button>
+                    <button type="button" class="btn btn-danger btn-icon" id="opt-del-confirm" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
                 </div>
             </div>
         </div>

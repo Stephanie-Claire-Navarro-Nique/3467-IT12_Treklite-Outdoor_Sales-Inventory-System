@@ -34,7 +34,8 @@
                             @if ($product->image_url)
                                 <img src="{{ $product->image_url }}" id="photo-preview" class="img-fluid rounded mb-2" style="max-height: 200px" alt="">
                             @else
-                                <div id="photo-placeholder" class="rounded bg-light text-secondary d-flex align-items-center justify-content-center mb-2 mx-auto" style="width:200px;height:200px;font-size:3rem"><i class="bi bi-image"></i></div>
+                                @php $ph = $product->placeholder; @endphp
+                                <div id="photo-placeholder" class="ph-thumb mb-2 mx-auto" style="width:200px;height:200px;font-size:96px" title="{{ $ph['tip'] }}" role="img" aria-label="{{ $ph['tip'] }}">{{ $ph['icon'] }}</div>
                                 <img src="" id="photo-preview" class="img-fluid rounded mb-2 d-none" style="max-height: 200px" alt="">
                             @endif
                             <input type="file" name="image" id="photo-input" accept="image/*" class="form-control form-control-sm">
@@ -88,13 +89,13 @@
                 <div class="card shadow-sm">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span class="fw-bold">Variants (size / color)</span>
-                        <button type="button" class="btn btn-outline-success btn-sm" id="add-variant">+ Add variant</button>
+                        <button type="button" class="btn btn-outline-success btn-icon" id="add-variant" title="Add variant (another size / color)" aria-label="Add variant"><i class="bi bi-plus-lg"></i></button>
                     </div>
                     <div class="card-body">
                         <div class="small text-muted mb-2">
                             Each size/color combination is one row. For items with no size or color, keep a single row and leave both blank.
                             The first column shows the <strong>Model</strong> (read-only, it follows what you type on the left). The system keeps its own item code, so there is nothing else to type.
-                            Type the <strong>Stock</strong> you have now for each new row (leave 0 if none yet). It is saved as the opening stock and recorded in Stock History.
+                            Type the <strong>Starting stock</strong> (at least 1) for each new row. The product, its sizes / colors and its stock are saved together in one step, and the stock is recorded in Stock History.
                             @if ($editing)
                                 Stock of existing rows is not changed here. Use <strong>Inventory</strong> (Receive / Count) so every change is logged.
                             @endif
@@ -108,7 +109,7 @@
                                         <th>Color <button type="button" class="btn btn-outline-success btn-sm py-0 px-1 ms-1" data-quick="colors" title="Add a new color" aria-label="Add a new color"><i class="bi bi-plus-lg"></i></button></th>
                                         <th style="width:100px">Price</th>
                                         <th style="width:80px">Low at</th>
-                                        <th style="width:100px">Stock</th>
+                                        <th style="width:110px">Starting stock</th>
                                         <th></th>
                                     </tr>
                                 </thead>
@@ -121,8 +122,8 @@
         </div>
 
         <div class="mt-3">
-            <button class="btn btn-success">{{ $editing ? 'Save changes' : 'Save product' }}</button>
-            <a href="{{ route('products.index') }}" class="btn btn-outline-secondary">Cancel</a>
+            <button class="btn btn-success btn-icon" title="{{ $editing ? 'Save changes' : 'Save product' }}" aria-label="{{ $editing ? 'Save changes' : 'Save product' }}"><i class="bi bi-check-lg"></i></button>
+            <a href="{{ route('products.index') }}" class="btn btn-outline-secondary btn-icon" title="Cancel" aria-label="Cancel"><i class="bi bi-x-lg"></i></a>
         </div>
     </form>
 
@@ -166,9 +167,9 @@
                 <td><input type="number" step="0.01" min="0" name="variants[${i}][price]" class="form-control form-control-sm" value="${esc(v.price)}" placeholder="default"></td>
                 <td><input type="number" min="0" name="variants[${i}][low_stock_threshold]" class="form-control form-control-sm" value="${esc(v.low_stock_threshold ?? 5)}" required></td>
                 <td>${isNew
-                    ? `<input type="number" min="0" max="1000000" name="variants[${i}][initial_stock]" class="form-control form-control-sm" value="${esc(v.initial_stock ?? 0)}" aria-label="Stock">`
+                    ? `<input type="number" min="1" max="1000000" name="variants[${i}][initial_stock]" class="form-control form-control-sm" value="${esc(v.initial_stock ?? 1)}" placeholder="1 or more" required aria-label="Starting stock">`
                     : `<span class="text-muted">${esc(v.quantity ?? 0)}</span>`}</td>
-                <td>${isNew ? '<button type="button" class="btn btn-sm btn-outline-danger remove-variant">&times;</button>' : ''}</td>`;
+                <td>${isNew ? '<button type="button" class="btn btn-outline-danger btn-icon remove-variant" title="Remove this row" aria-label="Remove this row"><i class="bi bi-x-lg"></i></button>' : ''}</td>`;
             tbody.appendChild(tr);
         }
 
@@ -204,8 +205,8 @@
                     <input type="text" class="form-control" id="quick-name" maxlength="255" autocomplete="off" required>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success" id="quick-save">Add</button>
+                    <button type="button" class="btn btn-outline-secondary btn-icon" data-bs-dismiss="modal" title="Cancel" aria-label="Cancel"><i class="bi bi-x-lg"></i></button>
+                    <button type="submit" class="btn btn-success btn-icon" id="quick-save" title="Add" aria-label="Add"><i class="bi bi-check-lg"></i></button>
                 </div>
             </form>
         </div>

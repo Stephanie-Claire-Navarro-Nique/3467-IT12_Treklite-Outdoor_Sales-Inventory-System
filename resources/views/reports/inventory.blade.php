@@ -66,7 +66,7 @@
                 <label for="to">To</label>
                 <input type="date" id="to" name="to" class="form-control form-control-sm" value="{{ $to->format('Y-m-d') }}" max="{{ now()->toDateString() }}">
             </div>
-            <button class="btn btn-sm {{ $period === 'custom' ? 'btn-success' : 'btn-outline-success' }}">Apply</button>
+            <button class="btn btn-icon {{ $period === 'custom' ? 'btn-success' : 'btn-outline-success' }}" title="Apply dates" aria-label="Apply dates"><i class="bi bi-check-lg"></i></button>
         </form>
 
         <div class="filter-divider"></div>
@@ -101,6 +101,8 @@
             <div class="stat-label"><i class="bi bi-x-circle"></i> Out of stock</div><div class="stat-value">{{ $outCount }}</div></div></div></div>
     </div>
 
+    {{-- Shown 10 per page on screen; the printed report always has every row. --}}
+    <div data-ctable data-per-page="10">
     <div class="card shadow-sm">
         <div class="table-responsive">
             <table class="table mb-0 align-middle">
@@ -120,7 +122,7 @@
                 </thead>
                 <tbody>
                     @forelse ($variants as $v)
-                        <tr>
+                        <tr data-row>
                             <td>{{ $v->product->name }}</td>
                             <td>{{ $v->label }}</td>
                             <td class="text-end">{{ $v->quantity }}</td>
@@ -159,5 +161,7 @@
                 @endif
             </table>
         </div>
+    </div>
+    <div data-pager class="no-print"></div>
     </div>
 @endsection

@@ -20,19 +20,28 @@ use Illuminate\Validation\ValidationException;
 
 class SaleController extends Controller
 {
-    /** Sales list with search, date range, cashier and payment filters. */
+    /**
+     * Sales Records. The sales are loaded ONCE; the search, date range, cashier and payment filters, the totals and the
+     * paging all work in the browser, so changing a filter never queries the server again.
+     * (The PDF / Excel export still uses the server, because it builds a file.)
+     */
     public function index(Request $request)
     {
         $isOwner = auth()->user()->hasFullAccess();
-        [$query, $filters] = $this->filteredSales($request, $isOwner);
 
-        // Voided sales are listed (with a badge) but never counted in the totals.
-        $summary     = (clone $query)->active()->selectRaw('COUNT(*) as cnt, COALESCE(SUM(total_amount), 0) as total')->first();
-        $voidedCount = (clone $query)->whereHas('voidRecord')->count();
-        $sales    = $query->with('user')->latest('sold_at')->paginate(20)->withQueryString();
+        // The filters in the link (if any) only pre-fill the filter boxes.
+        [, $filters] = $this->filteredSales($request, $isOwner);
+
+        $sales = Sale::query()
+            ->when(! $isOwner, fn ($w) => $w->where('user_id', auth()->id()))
+            ->with('user')
+            ->latest('sold_at')
+            ->limit(5000)
+            ->get();
+
         $cashiers = $isOwner ? User::orderBy('name')->get(['id', 'name']) : collect();
 
-        return view('sales.index', $filters + compact('sales', 'summary', 'voidedCount', 'cashiers', 'isOwner'));
+        return view('sales.index', $filters + compact('sales', 'cashiers', 'isOwner'));
     }
 
     /**
@@ -156,6 +165,8 @@ class SaleController extends Controller
                 'category' => $p->category?->name,
                 'brand'    => $p->brand?->name,
                 'image'    => $p->image_url,
+                'ph_icon'  => $p->placeholder['icon'],   // generic picture + tooltip when there is no photo
+                'ph_tip'   => $p->placeholder['tip'],
                 'variants' => $p->variants->map(fn ($v) => [
                     'id'    => $v->id,
                     'size'  => $v->size?->name,

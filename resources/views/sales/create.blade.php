@@ -13,13 +13,13 @@
         .product-card:hover { border-color: #1e5b31; box-shadow: 0 .4rem .9rem rgba(0,0,0,.12); transform: translateY(-2px); }
         .product-card.out { opacity: .55; cursor: not-allowed; }
         .product-img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; }
-        .placeholder-img { display: flex; align-items: center; justify-content: center; background: #e9edeb; color: #9aa6a0; font-size: 2.5rem; }
+        .placeholder-img { display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #eef2ef, #dfe7e2); font-size: 3.5rem; line-height: 1; cursor: help; user-select: none; }
         .name-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.5em; line-height: 1.25; }
         .opt-lines { min-height: 2.6em; font-size: .75rem; line-height: 1.3; }
         .price { color: #ee4d2d; font-weight: 700; }
         .stock-badge { position: absolute; top: .4rem; left: .4rem; font-size: .7rem; }
 
-        .grid-scroll { max-height: calc(100vh - 230px); min-height: 320px; overflow-y: auto; padding: .25rem .5rem .5rem .25rem; margin: -.25rem; }
+                .grid-page { padding: .25rem; margin: -.25rem; }
         .right-col { position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow-y: auto; }
         .cart-lines { max-height: 300px; overflow-y: auto; }
         .cart-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: .35rem; background: #e9edeb; flex-shrink: 0; }
@@ -47,10 +47,11 @@
                 @endforeach
             </div>
 
-            {{-- The grid scrolls inside its own box, so many products never push the page down. --}}
-            <div class="grid-scroll">
+            {{-- The products are paged (12 per page) instead of scrolling, so many products never make the page long. --}}
+            <div class="grid-page">
                 <div class="row g-2" id="product-grid"></div>
             </div>
+            <div id="grid-pager"></div>
         </div>
 
         {{-- ============ RIGHT: cart + customer/payment + total ============ --}}
@@ -89,7 +90,7 @@
                         <label class="form-label small mb-0">Amount received (₱)</label>
                         <div class="input-group input-group-sm mb-1">
                             <input type="number" step="0.01" min="0" name="amount_tendered" id="tendered" class="form-control @error('amount_tendered') is-invalid @enderror" placeholder="0.00" required value="{{ old('amount_tendered') }}">
-                            <button type="button" class="btn btn-outline-secondary" id="exact-btn" title="Fill in the exact total">Exact</button>
+                            <button type="button" class="btn btn-outline-secondary btn-icon" id="exact-btn" title="Exact amount (fill in the total)" aria-label="Exact amount"><i class="bi bi-cash-coin"></i></button>
                         </div>
                         @error('amount_tendered')<div class="text-danger small mb-1">{{ $message }}</div>@enderror
                         <div class="small mb-1" id="amount-msg"></div>
@@ -110,8 +111,8 @@
                             <label class="form-label small mb-0">Photo of payment confirmation <span class="text-danger">*</span></label>
                             <input type="file" name="payment_proof" id="payment-proof" accept="image/*" capture="environment" class="form-control form-control-sm mb-1 @error('payment_proof') is-invalid @enderror">
                             @error('payment_proof')<div class="text-danger small mb-1">{{ $message }}</div>@enderror
-                            <button type="button" class="btn btn-sm btn-outline-secondary w-100 mb-1" id="scan-btn" disabled>
-                                <i class="bi bi-camera"></i> Read reference number from photo
+                            <button type="button" class="btn btn-outline-secondary btn-icon mb-1" id="scan-btn" disabled title="Read the reference number from the photo" aria-label="Read the reference number from the photo">
+                                <i class="bi bi-camera"></i>
                             </button>
                             <div class="small mb-2" id="scan-msg"></div>
                             <div class="small text-muted">Check the amount on the customer's phone before completing the sale. The photo is required.</div>
@@ -122,13 +123,13 @@
                 {{-- Box 3: total + submit --}}
                 <div class="card shadow-sm">
                     <div class="card-body">
-                        <div class="d-flex justify-content-between fs-5 fw-bold mb-2">
-                            <span>Total</span><span id="total-display">₱0.00</span>
-                        </div>
                         <div id="cart-inputs"></div>
-                        <button class="btn btn-success w-100" id="submit-btn" disabled>
-                            <i class="bi bi-check2-circle"></i> Complete Sale
-                        </button>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="fs-5 fw-bold">Total <span id="total-display">₱0.00</span></div>
+                            <button class="btn btn-success btn-icon" id="submit-btn" disabled title="Complete Sale" aria-label="Complete Sale">
+                                <i class="bi bi-check2-circle"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </form>
@@ -169,8 +170,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-success w-100" id="modal-add">
-                        <i class="bi bi-cart-plus"></i> Add to cart
+                    <button type="button" class="btn btn-success btn-icon" id="modal-add" title="Add to cart" aria-label="Add to cart">
+                        <i class="bi bi-cart-plus"></i>
                     </button>
                 </div>
             </div>
@@ -208,6 +209,8 @@
                 return t || v.label;
             };
 
+            const GRID_PER_PAGE = 12;
+            let gridPage = 1;
             let cart = [];            // [{ id: variantId, qty }]
             let activeCat = '';
             let modalProduct = null;
@@ -216,7 +219,8 @@
             const modal = new bootstrap.Modal($('variant-modal'));
 
             /* ---------- catalog ---------- */
-            function renderCatalog() {
+            function renderCatalog(resetPage = false) {
+                if (resetPage === true) gridPage = 1;
                 const q = $('search').value.trim().toLowerCase();
 
                 const list = PRODUCTS.filter(p =>
@@ -225,9 +229,34 @@
                         p.variants.map(v => v.size + ' ' + v.color).join(' ')).toLowerCase().includes(q))
                 );
 
-                $('product-grid').innerHTML = list.length ? list.map(card).join('')
+                // Paging: only one page of cards is drawn at a time (the filter above works on the products already loaded).
+                const pages = Math.max(1, Math.ceil(list.length / GRID_PER_PAGE));
+                gridPage = Math.min(gridPage, pages);
+                const start = (gridPage - 1) * GRID_PER_PAGE;
+
+                $('product-grid').innerHTML = list.length ? list.slice(start, start + GRID_PER_PAGE).map(card).join('')
                     : '<div class="col-12 text-center text-muted py-5">No products found.</div>';
+
+                const nums = [];
+                for (let i = 1; i <= pages; i++) {
+                    if (i === 1 || i === pages || Math.abs(i - gridPage) <= 1) nums.push(i);
+                    else if (nums[nums.length - 1] !== '…') nums.push('…');
+                }
+                $('grid-pager').innerHTML = list.length <= GRID_PER_PAGE ? '' : `<div class="ct-pager">
+                    <div class="small text-muted">Showing ${start + 1}–${Math.min(start + GRID_PER_PAGE, list.length)} of ${list.length}</div>
+                    <ul class="pagination pagination-sm">
+                        <li class="page-item ${gridPage === 1 ? 'disabled' : ''}"><button type="button" class="page-link" data-gp="${gridPage - 1}" title="Previous page" aria-label="Previous page"><i class="bi bi-chevron-left"></i></button></li>
+                        ${nums.map(n => n === '…' ? '<li class="page-item disabled"><span class="page-link">…</span></li>'
+                            : `<li class="page-item ${n === gridPage ? 'active' : ''}"><button type="button" class="page-link" data-gp="${n}">${n}</button></li>`).join('')}
+                        <li class="page-item ${gridPage === pages ? 'disabled' : ''}"><button type="button" class="page-link" data-gp="${gridPage + 1}" title="Next page" aria-label="Next page"><i class="bi bi-chevron-right"></i></button></li>
+                    </ul>
+                </div>`;
             }
+
+            $('grid-pager').addEventListener('click', e => {
+                const b = e.target.closest('[data-gp]');
+                if (b) { gridPage = parseInt(b.dataset.gp, 10) || 1; renderCatalog(); }
+            });
 
             function card(p) {
                 const prices = p.variants.map(v => v.price);
@@ -237,7 +266,7 @@
                 const sizes = uniq(p, 'size'), colors = uniq(p, 'color');
                 const img = p.image
                     ? `<img src="${esc(p.image)}" class="product-img" alt="">`
-                    : `<div class="product-img placeholder-img"><i class="bi bi-image"></i></div>`;
+                    : `<div class="product-img placeholder-img" title="${esc(p.ph_tip)}" role="img" aria-label="${esc(p.ph_tip)}">${p.ph_icon}</div>`;
                 const badge = stock <= 0 ? '<span class="badge bg-secondary stock-badge">Sold out</span>'
                             : (low ? '<span class="badge bg-warning text-dark stock-badge">Low stock</span>' : '');
 
@@ -253,8 +282,8 @@
                             </div>
                             <div class="price">${min === max ? peso(min) : peso(min) + ' – ' + peso(max)}</div>
                             <div class="small ${stock <= 0 ? 'text-danger' : 'text-muted'} mb-2">${stock <= 0 ? 'Out of stock' : stock + ' in stock'}</div>
-                            <button type="button" class="btn btn-outline-success btn-sm w-100 mt-auto" ${stock <= 0 ? 'disabled' : ''}>
-                                <i class="bi bi-cart-plus"></i> Add to cart
+                            <button type="button" class="btn btn-outline-success btn-icon mt-auto ms-auto" ${stock <= 0 ? 'disabled' : ''} title="Add to cart" aria-label="Add to cart">
+                                <i class="bi bi-cart-plus"></i>
                             </button>
                         </div>
                     </div>
@@ -265,13 +294,13 @@
                 const el = e.target.closest('.product-card');
                 if (el) openProduct(parseInt(el.dataset.id, 10));
             });
-            $('search').addEventListener('input', renderCatalog);
+            $('search').addEventListener('input', () => renderCatalog(true));
             $('cat-pills').addEventListener('click', e => {
                 const pill = e.target.closest('.cat-pill');
                 if (!pill) return;
                 activeCat = pill.dataset.cat;
                 document.querySelectorAll('.cat-pill').forEach(b => b.classList.toggle('active', b === pill));
-                renderCatalog();
+                renderCatalog(true);
             });
 
             /* ---------- variant picker (size + color) ---------- */
@@ -290,7 +319,7 @@
                 $('modal-title').textContent = p.name;
                 $('modal-image').innerHTML = p.image
                     ? `<img src="${esc(p.image)}" class="img-fluid rounded" alt="">`
-                    : `<div class="product-img placeholder-img rounded"><i class="bi bi-image"></i></div>`;
+                    : `<div class="product-img placeholder-img rounded" title="${esc(p.ph_tip)}" role="img" aria-label="${esc(p.ph_tip)}">${p.ph_icon}</div>`;
 
                 const first = p.variants.find(inStock);
                 selSize = first.size;
@@ -390,7 +419,7 @@
                     const v = VARIANTS[l.id];
                     const thumb = v.product.image
                         ? `<img src="${esc(v.product.image)}" class="cart-thumb" alt="">`
-                        : `<div class="cart-thumb d-flex align-items-center justify-content-center text-secondary"><i class="bi bi-image"></i></div>`;
+                        : `<div class="cart-thumb d-flex align-items-center justify-content-center fs-4" title="${esc(v.product.ph_tip)}" role="img" aria-label="${esc(v.product.ph_tip)}">${v.product.ph_icon}</div>`;
                     return `<div class="d-flex gap-2 border-bottom py-2">
                         ${thumb}
                         <div class="flex-grow-1">

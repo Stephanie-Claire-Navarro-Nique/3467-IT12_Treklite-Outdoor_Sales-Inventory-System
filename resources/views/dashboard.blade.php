@@ -4,9 +4,9 @@
 
 @section('content')
     <style>
-        /* Panels show about 5 rows; anything more scrolls inside the panel. */
-        .panel-scroll { max-height: 250px; overflow-y: auto; }
-        .panel-scroll .list-group-item { min-height: 50px; }
+        /* Panels show 5 rows per page (paging buttons under the list) instead of scrolling. */
+        .panel-page .list-group-item { min-height: 50px; }
+        .panel-page .ct-pager { padding: .4rem .75rem; border-top: 1px solid #e9ecef; }
     </style>
 
     <h3 class="mb-4">Dashboard</h3>
@@ -70,9 +70,10 @@
         <div class="col-lg-6">
             <div class="card shadow-sm h-100">
                 <div class="card-header bg-danger-subtle fw-bold">Out of stock ({{ $outOfStock->count() }})</div>
-                <ul class="list-group list-group-flush panel-scroll">
+                <div data-ctable data-per-page="5" data-compact class="panel-page">
+                <ul class="list-group list-group-flush">
                     @forelse ($outOfStock as $v)
-                        <li class="list-group-item d-flex justify-content-between">
+                        <li class="list-group-item d-flex justify-content-between" data-row>
                             <span>{{ $v->product->name }} <span class="text-muted">&mdash; {{ $v->label }}</span></span>
                             <span class="badge bg-danger">0</span>
                         </li>
@@ -80,6 +81,8 @@
                         <li class="list-group-item text-muted">Nothing is out of stock.</li>
                     @endforelse
                 </ul>
+                <div data-pager></div>
+                </div>
                 @if ($outOfStock->count() > 0)
                     <div class="card-footer bg-white text-end">
                         <a href="{{ route('inventory.index', ['status' => 'out']) }}" class="small">View all out of stock</a>
@@ -90,9 +93,10 @@
         <div class="col-lg-6">
             <div class="card shadow-sm h-100">
                 <div class="card-header bg-warning-subtle fw-bold">Low stock ({{ $lowStock->count() }})</div>
-                <ul class="list-group list-group-flush panel-scroll">
+                <div data-ctable data-per-page="5" data-compact class="panel-page">
+                <ul class="list-group list-group-flush">
                     @forelse ($lowStock as $v)
-                        <li class="list-group-item d-flex justify-content-between">
+                        <li class="list-group-item d-flex justify-content-between" data-row>
                             <span>{{ $v->product->name }} <span class="text-muted">&mdash; {{ $v->label }}</span></span>
                             <span class="badge bg-warning text-dark">{{ $v->quantity }} left</span>
                         </li>
@@ -100,6 +104,8 @@
                         <li class="list-group-item text-muted">No low-stock items.</li>
                     @endforelse
                 </ul>
+                <div data-pager></div>
+                </div>
                 @if ($lowStock->count() > 0)
                     <div class="card-footer bg-white text-end">
                         <a href="{{ route('inventory.index', ['status' => 'low']) }}" class="small">View all low stock</a>
@@ -142,7 +148,7 @@
             <div class="card shadow-sm h-100">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <span class="fw-bold">Latest sales</span>
-                    <a href="{{ route('sales.create') }}" class="btn btn-success btn-sm">+ New Sale</a>
+                    <a href="{{ route('sales.create') }}" class="btn btn-success btn-icon" title="New Sale" aria-label="New Sale"><i class="bi bi-cart-plus"></i></a>
                 </div>
                 <ul class="list-group list-group-flush">
                     @forelse ($recentSales as $sale)

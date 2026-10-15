@@ -4,21 +4,40 @@
 
 @section('content')
     <style>
+        /* ---- The receipt: one fixed layout, so every invoice looks the same on screen and on paper ---- */
+        .invoice { max-width: 760px; font-size: .92rem; }
+        .rc-meta { display: grid; grid-template-columns: 1fr 1fr; gap: .15rem 1.5rem; font-size: .85rem; margin-bottom: 1rem; }
+        .rc-meta .rc-right { text-align: right; }
+        .rc-items { table-layout: fixed; width: 100%; margin-bottom: 0; }
+        .rc-items th, .rc-items td { padding: .4rem .5rem; vertical-align: top; word-wrap: break-word; }
+        .rc-items .c-item   { width: 36%; }
+        .rc-items .c-opt    { width: 24%; }
+        .rc-items .c-qty    { width: 8%;  text-align: right; }
+        .rc-items .c-price  { width: 16%; text-align: right; }
+        .rc-items .c-amount { width: 16%; text-align: right; }
+        .rc-pay { width: 100%; max-width: 330px; margin-left: auto; font-size: .85rem; }
+        .rc-pay td { padding: .12rem 0; }
+        .rc-pay td:last-child { text-align: right; font-weight: 600; }
+
         @media print {
+            /* A margin of 0 on the page also removes the browser's own date / title / web address lines; the padding below gives the paper margin. */
+            @page { size: A4 portrait; margin: 0; }
             .sidebar, .topbar, .no-print, .alert, .sidebar-backdrop { display: none !important; }
             .main-wrapper { margin-left: 0 !important; }
+            .main-wrapper > .container-fluid { padding: 0 !important; }
             body { background: #fff !important; }
-            .invoice { box-shadow: none !important; border: 0 !important; }
+            .invoice { box-shadow: none !important; border: 0 !important; max-width: 170mm !important; margin: 15mm auto !important; }
+            .invoice .card-body { padding: 0 !important; }
         }
     </style>
 
     <div class="d-flex justify-content-between mb-3 no-print">
-        <a href="{{ route('sales.create') }}" class="btn btn-success"><i class="bi bi-cart-plus"></i> New Sale</a>
+        <a href="{{ route('sales.create') }}" class="btn btn-success btn-icon" title="New Sale" aria-label="New Sale"><i class="bi bi-arrow-left"></i></a>
         <div class="d-flex gap-2">
-            <a href="{{ route('sales.index') }}" class="btn btn-outline-secondary">Sales Records</a>
-            <button onclick="window.print()" class="btn btn-outline-dark"><i class="bi bi-printer"></i> Print</button>
+            <a href="{{ route('sales.index') }}" class="btn btn-outline-secondary btn-icon" title="Sales Records" aria-label="Sales Records"><i class="bi bi-receipt"></i></a>
+            <button type="button" onclick="window.print()" class="btn btn-outline-dark btn-icon" title="Print" aria-label="Print"><i class="bi bi-printer"></i></button>
             @if (auth()->user()->hasFullAccess() && ! $sale->isVoided())
-                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#void-modal"><i class="bi bi-x-octagon"></i> Void Sale</button>
+                <button type="button" class="btn btn-outline-danger btn-icon" data-bs-toggle="modal" data-bs-target="#void-modal" title="Void Sale" aria-label="Void Sale"><i class="bi bi-x-octagon"></i></button>
             @endif
         </div>
     </div>
@@ -37,7 +56,7 @@
         </div>
     @endif
 
-    <div class="card shadow-sm invoice mx-auto {{ $sale->isVoided() ? 'border-danger' : '' }}" style="max-width: 760px;">
+    <div class="card shadow-sm invoice mx-auto {{ $sale->isVoided() ? 'border-danger' : '' }}">
         <div class="card-body p-4">
             <div class="text-center mb-3">
                 <h4 class="mb-0">Treklite Outdoor</h4>
@@ -45,48 +64,53 @@
                 <div class="fw-bold mt-2 text-uppercase">Sales Invoice @if ($sale->isVoided()) <span class="badge bg-danger">VOIDED</span> @endif</div>
             </div>
 
-            <div class="row small mb-3">
-                <div class="col-7">
-                    <div><span class="text-muted">Sold to:</span> <strong>{{ $sale->customer_name }}</strong></div>
-                    <div><span class="text-muted">Address:</span> {{ $sale->customer_address ?: '—' }}</div>
-                    <div><span class="text-muted">Contact:</span> {{ $sale->customer_contact ?: '—' }}</div>
-                </div>
-                <div class="col-5 text-end">
-                    <div><span class="text-muted">Invoice No.:</span> <strong>{{ $sale->invoice_number }}</strong></div>
-                    <div><span class="text-muted">Date:</span> {{ $sale->sold_at->format('M d, Y h:i A') }}</div>
-                    <div><span class="text-muted">Cashier:</span> {{ $sale->user->name }}</div>
-                </div>
+            <div class="rc-meta">
+                <div><span class="text-muted">Sold to:</span> <strong>{{ $sale->customer_name }}</strong></div>
+                <div class="rc-right"><span class="text-muted">Invoice No.:</span> <strong>{{ $sale->invoice_number }}</strong></div>
+                <div><span class="text-muted">Address:</span> {{ $sale->customer_address ?: '—' }}</div>
+                <div class="rc-right"><span class="text-muted">Date:</span> {{ $sale->sold_at->format('M d, Y h:i A') }}</div>
+                <div><span class="text-muted">Contact:</span> {{ $sale->customer_contact ?: '—' }}</div>
+                <div class="rc-right"><span class="text-muted">Cashier:</span> {{ $sale->user->name }}</div>
             </div>
 
-            <table class="table table-sm">
+            <table class="table table-sm rc-items">
                 <thead>
-                    <tr><th>Item</th><th>Size / Color</th><th class="text-end">Qty</th><th class="text-end">Unit Price</th><th class="text-end">Amount</th></tr>
+                    <tr>
+                        <th class="c-item">Item</th>
+                        <th class="c-opt">Size / Color</th>
+                        <th class="c-qty">Qty</th>
+                        <th class="c-price">Unit Price</th>
+                        <th class="c-amount">Amount</th>
+                    </tr>
                 </thead>
                 <tbody>
                     @foreach ($sale->items as $item)
                         <tr>
-                            <td>{{ $item->variant->product->name }}<div class="small text-muted">{{ $item->variant->label }}</div></td>
-                            <td>{{ $item->variant->label }}</td>
-                            <td class="text-end">{{ $item->quantity }}</td>
-                            <td class="text-end">₱{{ number_format($item->unit_price, 2) }}</td>
-                            <td class="text-end">₱{{ number_format($item->subtotal, 2) }}</td>
+                            <td class="c-item">{{ $item->variant->product->name }}</td>
+                            <td class="c-opt">{{ $item->variant->label }}</td>
+                            <td class="c-qty">{{ $item->quantity }}</td>
+                            <td class="c-price">₱{{ number_format($item->unit_price, 2) }}</td>
+                            <td class="c-amount">₱{{ number_format($item->subtotal, 2) }}</td>
                         </tr>
                     @endforeach
                 </tbody>
                 <tfoot>
-                    <tr><th colspan="4" class="text-end">Total</th><th class="text-end">₱{{ number_format($sale->total_amount, 2) }}</th></tr>
+                    <tr>
+                        <th colspan="4" class="text-end">Total</th>
+                        <th class="c-amount">₱{{ number_format($sale->total_amount, 2) }}</th>
+                    </tr>
                 </tfoot>
             </table>
 
-            <div class="small">
-                <div><span class="text-muted">Payment method:</span> {{ $sale->payment_label }}</div>
-                <div><span class="text-muted">Amount received:</span> ₱{{ number_format($sale->amount_tendered, 2) }}
-                    &nbsp; <span class="text-muted">Change:</span> ₱{{ number_format($sale->change_amount, 2) }}</div>
+            <table class="rc-pay mt-3">
+                <tr><td class="text-muted fw-normal">Payment method</td><td>{{ $sale->payment_label }}</td></tr>
+                <tr><td class="text-muted fw-normal">Amount received</td><td>₱{{ number_format($sale->amount_tendered, 2) }}</td></tr>
+                <tr><td class="text-muted fw-normal">Change</td><td>₱{{ number_format($sale->change_amount, 2) }}</td></tr>
                 @if ($sale->payment_reference)
-                    {{-- Only old sales have a reference number --}}
-                    <div><span class="text-muted">Reference no.:</span> {{ $sale->payment_reference }}</div>
+                    {{-- Only GCash / bank sales have a reference number --}}
+                    <tr><td class="text-muted fw-normal">Reference no.</td><td>{{ $sale->payment_reference }}</td></tr>
                 @endif
-            </div>
+            </table>
 
             @if ($sale->payment_proof_url)
                 <div class="mt-3 no-print">
@@ -117,8 +141,8 @@
                         <textarea name="reason" id="void-reason" rows="3" maxlength="255" class="form-control" required placeholder="e.g. Customer returned the tent, wrong size encoded">{{ old('reason') }}</textarea>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button class="btn btn-danger">Void this sale</button>
+                        <button type="button" class="btn btn-outline-secondary btn-icon" data-bs-dismiss="modal" title="Cancel" aria-label="Cancel"><i class="bi bi-x-lg"></i></button>
+                        <button class="btn btn-danger btn-icon" title="Void this sale" aria-label="Void this sale"><i class="bi bi-x-octagon"></i></button>
                     </div>
                 </form>
             </div>

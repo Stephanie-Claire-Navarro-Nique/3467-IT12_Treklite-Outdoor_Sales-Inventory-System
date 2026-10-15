@@ -29,6 +29,25 @@ class ActivityLog extends Model
         'backup_restore'   => 'Backup restored',
     ];
 
+    /** Label color of each action [background, text], so different actions are never all the same color. */
+    public const ACTION_COLORS = [
+        'sale_void'       => ['#dc3545', '#ffffff'],   // red
+        'product_add'     => ['#198754', '#ffffff'],   // green
+        'product_edit'    => ['#0d6efd', '#ffffff'],   // blue
+        'product_archive' => ['#fd7e14', '#ffffff'],   // orange
+        'product_restore' => ['#20c997', '#000000'],   // teal
+        'product_delete'  => ['#842029', '#ffffff'],   // dark red
+        'option_add'      => ['#6f42c1', '#ffffff'],   // purple
+        'option_edit'     => ['#0dcaf0', '#000000'],   // cyan
+        'option_toggle'   => ['#ffc107', '#000000'],   // yellow
+        'option_delete'   => ['#d63384', '#ffffff'],   // pink
+        'staff_add'       => ['#6610f2', '#ffffff'],   // indigo
+        'staff_edit'      => ['#7d5a3c', '#ffffff'],   // brown
+        'staff_delete'    => ['#343a40', '#ffffff'],   // charcoal
+        'backup_create'   => ['#6c757d', '#ffffff'],   // gray
+        'backup_restore'  => ['#a61e4d', '#ffffff'],   // plum
+    ];
+
     /** Group of each action (saved in activity_logs.action_type); the Activity Log can color the entries by it. */
     public const ACTION_TYPES = [
         'sale'    => 'Sales',
@@ -69,6 +88,12 @@ class ActivityLog extends Model
     public function getActionLabelAttribute(): string
     {
         return self::ACTION_LABELS[$this->action] ?? ucfirst(str_replace('_', ' ', $this->action));
+    }
+
+    /** [background, text] color of this action's label. */
+    public function getActionColorAttribute(): array
+    {
+        return self::ACTION_COLORS[$this->action] ?? ['#6c757d', '#ffffff'];
     }
 
     public function user(): BelongsTo

@@ -21,43 +21,27 @@ use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
 {
-    /** Product list with search, brand and category filters. Stock is managed in Inventory, not here. */
-    public function index(Request $request)
+    /**
+     * Product list. Every product is loaded ONCE; searching, the brand / category / status filters and the paging
+     * all happen in the browser (see data-ctable in the layout), so changing a filter never queries the server again.
+     */
+    public function index()
     {
-        $q        = trim((string) $request->query('q'));
-        $brand    = trim((string) $request->query('brand'));
-        $category = trim((string) $request->query('category'));
-        $status   = in_array($request->query('status'), ['archived', 'all'], true) ? $request->query('status') : 'active';
-
         $products = Product::with('variants', 'brand', 'category')
-            ->when($status === 'active', fn ($w) => $w->where('is_active', true))
-            ->when($status === 'archived', fn ($w) => $w->where('is_active', false))
-            ->when($q !== '', fn ($w) => $w->where(fn ($s) => $s
-                ->where('name', 'like', "%{$q}%")
-                ->orWhereHas('brand', fn ($b) => $b->where('name', 'like', "%{$q}%"))
-                ->orWhereHas('category', fn ($c) => $c->where('name', 'like', "%{$q}%"))))
-            ->when($brand === InventoryController::NO_BRAND, fn ($w) => $w->whereNull('brand_id'))
-            ->when($brand !== '' && $brand !== InventoryController::NO_BRAND, fn ($w) => $w->whereHas('brand', fn ($b) => $b->where('name', $brand)))
-            ->when($category !== '', fn ($w) => $w->whereHas('category', fn ($c) => $c->where('name', $category)))
             ->orderBy('name')
-            ->paginate(20)
-            ->withQueryString();
+            ->get();
 
         $brands     = Brand::orderBy('name')->pluck('name');
         $categories = Category::orderBy('name')->pluck('name');
 
         // Products with no sales and no stock records at all (e.g. created by mistake) can be deleted.
-        $variantRows = ProductVariant::whereIn('product_id', $products->pluck('id'))->get(['id', 'product_id']);
+        $variantRows = $products->flatMap->variants;
         $usedIds     = SaleItem::whereIn('variant_id', $variantRows->pluck('id'))->pluck('variant_id')
             ->merge(StockMovement::whereIn('variant_id', $variantRows->pluck('id'))->pluck('variant_id'))
             ->unique();
-        $deletable = $variantRows->groupBy('product_id')
-            ->filter(fn ($g) => $g->pluck('id')->intersect($usedIds)->isEmpty())
-            ->keys()
-            ->merge($products->pluck('id')->diff($variantRows->pluck('product_id')))   // products with no variant rows at all
-            ->values();
+        $deletable = $products->filter(fn ($p) => $p->variants->pluck('id')->intersect($usedIds)->isEmpty())->pluck('id')->values();
 
-        return view('products.index', compact('products', 'q', 'brand', 'category', 'status', 'brands', 'categories', 'deletable'));
+        return view('products.index', compact('products', 'brands', 'categories', 'deletable'));
     }
 
     public function create()
@@ -78,8 +62,11 @@ class ProductController extends Controller
 
         ActivityLog::record('product_add', 'Added product ' . $product->name . ' (price ₱' . number_format((float) $product->price, 2) . ', ' . count($data['variants']) . ' size/color row(s)).');
 
-        return redirect()->route('inventory.index', ['product' => $product->id])
-            ->with('status', 'Product added with its opening stock. Use Receive / Count here for any later changes.');
+        $units = collect($data['variants'])->sum(fn ($r) => (int) ($r['initial_stock'] ?? 0));
+
+        // One step: the product, its sizes / colors and its opening stock are all saved together.
+        return redirect()->route('products.index')
+            ->with('status', $product->name . ' was added with ' . number_format($units) . ' unit(s) in stock. Use Inventory (Receive / Count) for later changes.');
     }
 
     public function edit(Product $product)
@@ -181,7 +168,7 @@ class ProductController extends Controller
 
     private function validated(Request $request): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'name'                         => ['required', 'string', 'max:255'],
             // Brand, category, size and color must already exist in the Item Options page (no free typing = no typos).
             'category'                     => ['nullable', 'string', 'max:255', Rule::exists('categories', 'name')],
@@ -194,9 +181,23 @@ class ProductController extends Controller
             'variants.*.size'              => ['nullable', 'string', 'max:50', Rule::exists('sizes', 'name')],
             'variants.*.color'             => ['nullable', 'string', 'max:50', Rule::exists('colors', 'name')],
             'variants.*.price'             => ['nullable', 'numeric', 'min:0'],
-            'variants.*.initial_stock'     => ['nullable', 'integer', 'min:0', 'max:1000000'],
+            'variants.*.initial_stock'     => ['nullable', 'integer', 'min:0', 'max:1000000'],   // new rows must be >= 1 (checked below)
             'variants.*.low_stock_threshold' => ['required', 'integer', 'min:0'],
         ]);
+
+        // Adding a product (or a new size / color row) and its stock is ONE step, so every NEW row must start with at least 1 unit.
+        // (Rows that already exist keep their stock; it is changed only in Inventory so every change is logged.)
+        $errors = [];
+        foreach ($data['variants'] as $i => $row) {
+            if (empty($row['id']) && (int) ($row['initial_stock'] ?? 0) < 1) {
+                $errors["variants.$i.initial_stock"] = 'Enter the starting stock (at least 1) for this size / color.';
+            }
+        }
+        if ($errors) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        return $data;
     }
 
     /**
