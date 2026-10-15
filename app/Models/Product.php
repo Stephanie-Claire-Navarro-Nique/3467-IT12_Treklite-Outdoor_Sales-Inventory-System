@@ -45,7 +45,7 @@ class Product extends Model
     }
 
     /**
-     * Product without a photo: one default placeholder picture (a plain image icon) and a short tooltip that says
+     * Product without a photo: a black-and-white line drawing matching its category (slippers, cap, apparel...) and a short tooltip that says
      * which product it is, e.g. "Slippers - Edge: no photo uploaded yet".
      */
     public function getPlaceholderAttribute(): array
@@ -54,6 +54,7 @@ class Product extends Model
         $name = trim((string) $this->name);
 
         return [
+            'icon' => \App\Support\PlaceholderIcon::svg($kind),   // black-and-white line drawing of that kind of product
             'tip' => ($kind !== '' ? $kind . ' - ' : '') . ($name !== '' ? $name . ': ' : '') . 'no photo uploaded yet',
         ];
     }

@@ -215,12 +215,14 @@
             flex-shrink: 0;
             line-height: 1;
             border-radius: .4rem;
-            background: linear-gradient(135deg, #eef2ef, #dfe7e2);
-            border: 1px dashed #b9c6be;
-            color: #8a9a91;
+            background: #fff;
+            border: 1px solid #d9dde0;
+            color: #111;           /* black line drawing on white */
+            padding: 14%;
             cursor: help;
             user-select: none;
         }
+        .ph-thumb .ph-svg, .placeholder-img .ph-svg { width: 100%; height: 100%; display: block; }
 
         /* The one fast tooltip (see script at the bottom): shows at once, can never get stuck */
         .fast-tip {
