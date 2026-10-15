@@ -42,8 +42,11 @@
 
     {{-- ====================== 1. BRAND OVERVIEW ====================== --}}
     @if ($mode === 'brands')
-        <div class="d-flex justify-content-between align-items-center mb-2">
-            <h6 class="text-uppercase text-muted mb-0">Brands</h6>
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+            <div class="btn-group btn-group-sm" role="group" aria-label="Inventory view">
+                <a href="{{ route('inventory.index') }}" class="btn btn-success"><i class="bi bi-grid"></i> By brand</a>
+                <a href="{{ route('inventory.index', ['view' => 'all']) }}" class="btn btn-outline-success"><i class="bi bi-list-ul"></i> All items</a>
+            </div>
             <form method="GET" action="{{ route('inventory.index') }}" class="d-flex align-items-center gap-2">
                 <label for="brand-status" class="small text-muted mb-0">Status</label>
                 <select name="status" id="brand-status" class="form-select form-select-sm" style="width:auto" onchange="this.form.submit()">
@@ -87,7 +90,13 @@
     {{-- ====================== 2. ITEM LIST ====================== --}}
     @else
         {{-- Where am I? --}}
-        <nav class="small mb-2">
+        @if ($all && ! $product)
+            <div class="btn-group btn-group-sm mb-2" role="group" aria-label="Inventory view">
+                <a href="{{ route('inventory.index') }}" class="btn btn-outline-success"><i class="bi bi-grid"></i> By brand</a>
+                <a href="{{ route('inventory.index', ['view' => 'all']) }}" class="btn btn-success"><i class="bi bi-list-ul"></i> All items</a>
+            </div>
+        @endif
+        <nav class="small mb-2 {{ $all && ! $product ? 'd-none' : '' }}">
             <a href="{{ route('inventory.index') }}"><i class="bi bi-grid"></i> All brands</a>
             @if ($brand !== '')
                 &rsaquo; <a href="{{ route('inventory.index', ['brand' => $brand]) }}">{{ $brand === $noBrand ? 'No brand' : $brand }}</a>
@@ -100,13 +109,25 @@
         {{-- Filters --}}
         <form method="GET" action="{{ route('inventory.index') }}" class="card shadow-sm mb-3">
             <div class="card-body py-2">
-                <input type="hidden" name="brand" value="{{ $brand }}">
+                @php $showBrand = $all && ! $product; @endphp
+                @if (! $showBrand)<input type="hidden" name="brand" value="{{ $brand }}">@endif
+                @if ($all)<input type="hidden" name="view" value="all">@endif
                 @if ($product)<input type="hidden" name="product" value="{{ $product->id }}">@endif
                 <div class="row g-2 align-items-end">
-                    <div class="col-lg-3 col-md-6">
+                    <div class="{{ $showBrand ? 'col-lg-2' : 'col-lg-3' }} col-md-6">
                         <label class="form-label small mb-0">Search</label>
                         <input type="search" name="q" value="{{ $q }}" class="form-control form-control-sm" placeholder="Model name, size, color">
                     </div>
+                    @if ($showBrand)
+                        <div class="col-lg-2 col-md-3 col-6">
+                            <label class="form-label small mb-0">Brand</label>
+                            <select name="brand" class="form-select form-select-sm">
+                                <option value="">All</option>
+                                @foreach ($brandOptions as $bn)<option value="{{ $bn }}" @selected($brand === $bn)>{{ $bn }}</option>@endforeach
+                                @if ($hasNoBrand)<option value="{{ $noBrand }}" @selected($brand === $noBrand)>No brand</option>@endif
+                            </select>
+                        </div>
+                    @endif
                     <div class="col-lg-2 col-md-3 col-6">
                         <label class="form-label small mb-0">Category</label>
                         <select name="category" class="form-select form-select-sm">
@@ -139,7 +160,7 @@
                     </div>
                     <div class="col-auto d-flex gap-2">
                         <button class="btn btn-sm btn-success"><i class="bi bi-funnel"></i> Filter</button>
-                        <a href="{{ route('inventory.index', array_filter(['brand' => $brand, 'product' => $product?->id])) }}" class="btn btn-sm btn-outline-secondary">Clear</a>
+                        <a href="{{ route('inventory.index', array_filter(['view' => $all ? 'all' : null, 'brand' => $showBrand ? null : $brand, 'product' => $product?->id])) }}" class="btn btn-sm btn-outline-secondary">Clear</a>
                     </div>
                 </div>
             </div>
@@ -154,7 +175,7 @@
                             <th>Model</th>
                             <th style="width:140px">Size</th>
                             <th style="width:140px">Color</th>
-                            <th class="text-end" style="width:90px">Stocks</th>
+                            <th class="text-end" style="width:90px">In stock</th>
                             <th class="text-center" style="width:120px">Status</th>
                             @if ($isOwner)
                                 <th class="text-center" style="width:110px">Action</th>

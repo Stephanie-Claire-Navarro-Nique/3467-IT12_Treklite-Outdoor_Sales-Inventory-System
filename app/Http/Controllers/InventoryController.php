@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Color;
 use App\Models\Product;
@@ -33,7 +34,9 @@ class InventoryController extends Controller
         $status   = in_array($request->query('status'), ['out', 'low', 'ok'], true) ? $request->query('status') : '';
         $product  = $request->filled('product') ? Product::find((int) $request->query('product')) : null;
 
-        $filtering = $q !== '' || $brand !== '' || $category !== '' || $size !== '' || $color !== '' || $status !== '' || $product;
+        $all      = $request->query('view') === 'all';   // "All items" view: every item in one list, no brand chosen
+
+        $filtering = $all || $q !== '' || $brand !== '' || $category !== '' || $size !== '' || $color !== '' || $status !== '' || $product;
 
         // ---------- 1. Brand overview ----------
         if (! $filtering) {
@@ -53,7 +56,7 @@ class InventoryController extends Controller
             return view('inventory.index', [
                 'mode'   => 'brands',
                 'brands' => $brands,
-                'q' => '', 'brand' => '', 'category' => '', 'size' => '', 'color' => '', 'status' => '', 'product' => null,
+                'q' => '', 'brand' => '', 'category' => '', 'size' => '', 'color' => '', 'status' => '', 'product' => null, 'all' => false,
             ]);
         }
 
@@ -93,8 +96,13 @@ class InventoryController extends Controller
             ->paginate(25)
             ->withQueryString();
 
+        // Brand drop-down for the "All items" view (so the full list can still be narrowed to one brand).
+        $brandOptions = Brand::orderBy('name')->pluck('name');
+        $hasNoBrand   = Product::where('is_active', true)->whereNull('brand_id')->exists();
+
         return view('inventory.index', [
             'mode' => 'items',
+            'all' => $all, 'brandOptions' => $brandOptions, 'hasNoBrand' => $hasNoBrand,
             'variants' => $variants,
             'sizes' => $sizes, 'colors' => $colors, 'categories' => $categories,
             'q' => $q, 'brand' => $brand, 'category' => $category, 'size' => $size, 'color' => $color,
