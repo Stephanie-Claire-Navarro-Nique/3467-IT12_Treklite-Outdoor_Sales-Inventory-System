@@ -9,9 +9,9 @@
         .cat-pill:hover { border-color: #1e5b31; }
         .cat-pill.active { background: #1e5b31; border-color: #1e5b31; color: #fff; }
 
-        .product-card { border: 1px solid #e3e6e4; cursor: pointer; transition: box-shadow .15s, transform .15s, border-color .15s; overflow: hidden; }
-        .product-card:hover { border-color: #1e5b31; box-shadow: 0 .4rem .9rem rgba(0,0,0,.12); transform: translateY(-2px); }
-        .product-card.out { opacity: .55; cursor: not-allowed; }
+        .product-card { border: 1px solid #e3e6e4; cursor: default; transition: box-shadow .15s, border-color .15s; overflow: hidden; }
+        .product-card:hover { border-color: #1e5b31; box-shadow: 0 .3rem .7rem rgba(0,0,0,.10); }
+        .product-card.out { opacity: .55; }
         .product-img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; }
         .placeholder-img { display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #eef2ef, #dfe7e2); font-size: 3.5rem; line-height: 1; color: #8a9a91; cursor: help; user-select: none; }
         .name-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.5em; line-height: 1.25; }
@@ -20,8 +20,8 @@
         .stock-badge { position: absolute; top: .4rem; left: .4rem; font-size: .7rem; }
 
                 .grid-page { padding: .25rem; margin: -.25rem; }
-        .right-col { position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow-y: auto; }
-        .cart-lines { max-height: 300px; overflow-y: auto; }
+        .right-col { }
+        .cart-lines { }
         .cart-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: .35rem; background: #e9edeb; flex-shrink: 0; }
         .qty-btn { width: 28px; padding: 0; }
 
@@ -104,16 +104,16 @@
                                     <div class="small text-muted">Customer scans this QR, then shows the payment confirmation.</div>
                                 </div>
                             @endif
-                            <label class="form-label small mb-0">Reference number <span class="text-danger">*</span></label>
-                            <input type="text" name="payment_reference" id="payment-reference" maxlength="100" autocomplete="off" class="form-control form-control-sm mb-1 @error('payment_reference') is-invalid @enderror" placeholder="Reference no. from the payment confirmation" value="{{ old('payment_reference') }}">
-                            @error('payment_reference')<div class="text-danger small mb-1">{{ $message }}</div>@enderror
-
                             <label class="form-label small mb-0">Photo of payment confirmation <span class="text-danger">*</span></label>
-                            <input type="file" name="payment_proof" id="payment-proof" accept="image/*" capture="environment" class="form-control form-control-sm mb-1 @error('payment_proof') is-invalid @enderror">
+                            <input type="file" name="payment_proof" id="payment-proof" accept="image/*" capture="environment" class="form-control form-control-sm mb-2 @error('payment_proof') is-invalid @enderror">
                             @error('payment_proof')<div class="text-danger small mb-1">{{ $message }}</div>@enderror
-                            <button type="button" class="btn btn-outline-secondary btn-icon mb-1" id="scan-btn" disabled title="Read the reference number from the photo" aria-label="Read the reference number from the photo">
-                                <i class="bi bi-camera"></i>
-                            </button>
+
+                            <label class="form-label small mb-0">Reference number <span class="text-danger">*</span></label>
+                            <div class="input-group input-group-sm mb-1">
+                                <input type="text" name="payment_reference" id="payment-reference" maxlength="100" autocomplete="off" class="form-control @error('payment_reference') is-invalid @enderror" placeholder="From the payment confirmation" value="{{ old('payment_reference') }}">
+                                <button type="button" class="btn btn-outline-secondary btn-icon" id="scan-btn" disabled title="Read the reference number from the photo (choose the photo first)" aria-label="Read the reference number from the photo"><i class="bi bi-camera"></i></button>
+                            </div>
+                            @error('payment_reference')<div class="text-danger small mb-1">{{ $message }}</div>@enderror
                             <div class="small mb-2" id="scan-msg"></div>
                             <div class="small text-muted">Check the amount on the customer's phone before completing the sale. The photo is required.</div>
                         </div>
@@ -126,7 +126,7 @@
                         <div id="cart-inputs"></div>
                         <div class="d-flex justify-content-between align-items-center">
                             <div class="fs-5 fw-bold">Total <span id="total-display">₱0.00</span></div>
-                            <button class="btn btn-success btn-icon" id="submit-btn" disabled title="Complete Sale" aria-label="Complete Sale">
+                            <button class="btn btn-success btn-icon" id="submit-btn" disabled title="Complete sale" aria-label="Complete sale">
                                 <i class="bi bi-check2-circle"></i>
                             </button>
                         </div>
@@ -282,7 +282,7 @@
                             </div>
                             <div class="price">${min === max ? peso(min) : peso(min) + ' – ' + peso(max)}</div>
                             <div class="small ${stock <= 0 ? 'text-danger' : 'text-muted'} mb-2">${stock <= 0 ? 'Out of stock' : stock + ' in stock'}</div>
-                            <button type="button" class="btn btn-outline-success btn-icon mt-auto ms-auto" ${stock <= 0 ? 'disabled' : ''} title="Add to cart" aria-label="Add to cart">
+                            <button type="button" class="btn btn-outline-success btn-icon add-btn mt-auto ms-auto" ${stock <= 0 ? 'disabled' : ''} title="Add to cart" aria-label="Add to cart">
                                 <i class="bi bi-cart-plus"></i>
                             </button>
                         </div>
@@ -290,9 +290,11 @@
                 </div>`;
             }
 
+            // Only the Add to cart button adds a product (or opens the size / color picker). Clicking the picture or the text does nothing.
             $('product-grid').addEventListener('click', e => {
-                const el = e.target.closest('.product-card');
-                if (el) openProduct(parseInt(el.dataset.id, 10));
+                const btn = e.target.closest('.add-btn');
+                if (!btn || btn.disabled) return;
+                openProduct(parseInt(btn.closest('.product-card').dataset.id, 10));
             });
             $('search').addEventListener('input', () => renderCatalog(true));
             $('cat-pills').addEventListener('click', e => {

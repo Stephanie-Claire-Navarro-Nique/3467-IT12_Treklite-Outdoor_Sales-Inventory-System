@@ -82,12 +82,14 @@ class ProductController extends Controller
         $oldName  = $product->name;
         $oldPrice = (float) $product->price;
 
-        DB::transaction(function () use ($request, $data, $product) {
+        $removed = [];
+
+        DB::transaction(function () use ($request, $data, $product, &$removed) {
             $oldImageId = $product->image_id;
             $fields     = $this->productFields($request, $data);
 
             $product->update($fields);
-            $this->saveVariants($product, $data['variants']);
+            $removed = $this->saveVariants($product, $data['variants']);
 
             // A new photo replaces the old one, so the old photo is removed from the database.
             if (isset($fields['image_id']) && $oldImageId && $oldImageId !== $fields['image_id']) {
@@ -101,6 +103,9 @@ class ProductController extends Controller
         }
         if ($oldName !== $data['name']) {
             $note .= ' Renamed from "' . $oldName . '".';
+        }
+        if ($removed) {
+            $note .= ' Removed size/color: ' . implode(', ', $removed) . '.';
         }
         ActivityLog::record('product_edit', 'Edited product ' . $data['name'] . '.' . $note);
 
@@ -219,7 +224,8 @@ class ProductController extends Controller
         return $fields;
     }
 
-    private function saveVariants(Product $product, array $rows): void
+    /** Saves the rows. Returns the names of the size/color rows that were removed (e.g. ["Size 42 / Black (3 unit(s))"]). */
+    private function saveVariants(Product $product, array $rows): array
     {
         // The same size + color cannot be entered twice for one product.
         $seen = [];
@@ -229,6 +235,18 @@ class ProductController extends Controller
                 throw ValidationException::withMessages(["variants.$i.size" => 'This size / color is entered twice. Combine them into one row.']);
             }
             $seen[$key] = true;
+        }
+
+        // A row taken out of the form (the X button) is removed from the product. A size/color that was already SOLD
+        // must stay, so the past receipts keep working: set its stock to 0 in Inventory instead. Its own stock history goes with it.
+        $removed = [];
+        $keep    = collect($rows)->pluck('id')->filter()->map(fn ($v) => (int) $v)->all();
+        foreach ($product->variants()->whereNotIn('id', $keep)->get() as $old) {
+            if (SaleItem::where('variant_id', $old->id)->exists()) {
+                throw ValidationException::withMessages(['variants' => '"' . $old->label . '" was already sold, so it cannot be removed. Keep the row and set its stock to 0 in Inventory instead.']);
+            }
+            $removed[] = $old->label . ' (' . (int) $old->quantity . ' unit(s))';
+            $old->delete();   // its stock history is deleted with it
         }
 
         foreach ($rows as $i => $row) {
@@ -264,5 +282,7 @@ class ProductController extends Controller
                 ]);
             }
         }
+
+        return $removed;
     }
 }

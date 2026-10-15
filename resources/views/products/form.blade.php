@@ -26,7 +26,7 @@
 
         <div class="row g-3">
             {{-- Product details --}}
-            <div class="col-lg-5">
+            <div class="col-xxl-5">
                 <div class="card shadow-sm">
                     <div class="card-header fw-bold">Product details</div>
                     <div class="card-body">
@@ -85,7 +85,7 @@
             </div>
 
             {{-- Variants --}}
-            <div class="col-lg-7">
+            <div class="col-xxl-7">
                 <div class="card shadow-sm">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span class="fw-bold">Variants (size / color)</span>
@@ -97,24 +97,27 @@
                             The first column shows the <strong>Model</strong> (read-only, it follows what you type on the left). The system keeps its own item code, so there is nothing else to type.
                             Type the <strong>Starting stock</strong> (at least 1) for each new row. The product, its sizes / colors and its stock are saved together in one step, and the stock is recorded in Stock History.
                             @if ($editing)
-                                Stock of existing rows is not changed here. Use <strong>Inventory</strong> (Receive / Count) so every change is logged.
+                                Stock of existing rows is not changed here. Use <strong>Inventory</strong> (Receive / Count) so every change is logged. Press <strong>X</strong> to remove a row you added by mistake (not possible if it was already sold).
                             @endif
                         </div>
-                        <div class="table-responsive">
+                        <div class="variants-wrap">
                             <style>
                                 /* Every column has a fixed share of the width, so the Size / Color drop-downs, Price, Low at and
                                    Starting stock fields are all the same height and their words ("none", "default") are always fully visible. */
-                                #variants-table { table-layout: fixed; width: 100%; min-width: 760px; }
-                                #variants-table th { white-space: nowrap; }
+                                #variants-table { table-layout: fixed; width: 100%; }
+                                #variants-table th, #variants-table td { padding-left: .25rem; padding-right: .25rem; }
+                                @media (max-width: 575.98px) { .variants-wrap { overflow-x: auto; } #variants-table { min-width: 560px; } }   /* phones only */
+                                #variants-table th { line-height: 1.15; }
                                 #variants-table th, #variants-table td { vertical-align: middle; }
                                 #variants-table .form-select, #variants-table .form-control { width: 100%; height: 34px; }
-                                #variants-table .form-select { padding-right: 1.75rem; text-overflow: ellipsis; }
+                                #variants-table .form-select { padding-left: .5rem; padding-right: 1.5rem; text-overflow: ellipsis; }
+                                #variants-table .form-control { padding-left: .5rem; padding-right: .4rem; }
                                 #variants-table .remove-variant { margin: 0 auto; }
                             </style>
                             <table class="table table-sm align-middle" id="variants-table">
                                 <colgroup>
-                                    <col style="width:19%"><col style="width:16%"><col style="width:16%"><col style="width:13%">
-                                    <col style="width:11%"><col style="width:15%"><col style="width:10%">
+                                    <col style="width:19%"><col style="width:17%"><col style="width:17%"><col style="width:13%">
+                                    <col style="width:10%"><col style="width:14%"><col style="width:46px">
                                 </colgroup>
                                 <thead>
                                     <tr>
@@ -183,13 +186,19 @@
                 <td>${isNew
                     ? `<input type="number" min="1" max="1000000" name="variants[${i}][initial_stock]" class="form-control form-control-sm" value="${esc(v.initial_stock ?? 1)}" placeholder="Stock" required aria-label="Starting stock">`
                     : `<span class="text-muted">${esc(v.quantity ?? 0)}</span>`}</td>
-                <td>${isNew ? '<button type="button" class="btn btn-outline-danger btn-icon remove-variant" title="Remove this row" aria-label="Remove this row"><i class="bi bi-x-lg"></i></button>' : ''}</td>`;
+                <td><button type="button" class="btn btn-outline-danger btn-icon remove-variant" ${isNew ? '' : 'data-existing="1"'} title="Remove this size / color" aria-label="Remove this size / color"><i class="bi bi-x-lg"></i></button></td>`;
             tbody.appendChild(tr);
         }
 
         document.getElementById('add-variant').addEventListener('click', () => addVariant());
         tbody.addEventListener('click', e => {
-            if (e.target.closest('.remove-variant') && tbody.children.length > 1) e.target.closest('tr').remove();
+            const btn = e.target.closest('.remove-variant');
+            if (!btn) return;
+            if (tbody.children.length <= 1) { alert('A product needs at least one row. Edit this row instead, or add the new row first.'); return; }
+            const tr = btn.closest('tr');
+            // A row that is already saved is only removed when the form is saved, and only if it was never sold.
+            if (btn.dataset.existing && !confirm('Remove this size / color from the product?\nIts stock history is removed too. This cannot be done if it was already sold.\nIt is only removed when you press Save.')) return;
+            tr.remove();
         });
 
         (EXISTING.length ? EXISTING : [{}]).forEach(addVariant);
