@@ -35,8 +35,8 @@ class DashboardController extends Controller
         // 2. Inventory summary
         $productCount = Product::active()->count();
         $unitsOnHand  = (int) ProductVariant::whereHas('product', fn ($p) => $p->where('is_active', true))->sum('quantity');
-        $stockValue   = (float) DB::table('product_variants as v')
-            ->join('products as p', 'p.id', '=', 'v.product_id')
+        $stockValue   = (float) DB::table('product_variant as v')
+            ->join('product as p', 'p.id', '=', 'v.product_id')
             ->where('p.is_active', true)
             ->selectRaw('COALESCE(SUM(v.quantity * COALESCE(v.price, p.price)), 0) as value')
             ->value('value');

@@ -7,12 +7,12 @@ use Illuminate\Support\Facades\DB;
 use PDO;
 
 /**
- * Saves and reads photos inside the database (the `images` table), so they are not lost when the
+ * Saves and reads photos inside the database (the `image` table), so they are not lost when the
  * server restarts. Big phone photos are shrunk first so the database and the backups stay small.
  */
 class ImageStore
 {
-    /** Saves an uploaded photo and returns the new images.id */
+    /** Saves an uploaded photo and returns the new image.id */
     public static function fromUpload(UploadedFile $file, int $maxSide = 1200): int
     {
         $bytes = (string) file_get_contents($file->getRealPath());
@@ -40,7 +40,7 @@ class ImageStore
     }
 
     /**
-     * Inserts one row of the images table. The photo is sent as binary (LOB) so it is stored
+     * Inserts one row of the image table. The photo is sent as binary (LOB) so it is stored
      * exactly as it is, on MySQL, PostgreSQL and SQLite. Returns the id of the row.
      */
     public static function insertRow(array $row): int
@@ -50,7 +50,7 @@ class ImageStore
         $row['updated_at'] = $row['updated_at'] ?? $now;
 
         $columns = array_keys($row);
-        $sql     = 'INSERT INTO images (' . implode(', ', $columns) . ') VALUES (' . implode(', ', array_fill(0, count($columns), '?')) . ')';
+        $sql     = 'INSERT INTO image (' . implode(', ', $columns) . ') VALUES (' . implode(', ', array_fill(0, count($columns), '?')) . ')';
 
         $pdo  = DB::connection()->getPdo();
         $stmt = $pdo->prepare($sql);
@@ -72,13 +72,17 @@ class ImageStore
             return (int) $row['id'];
         }
 
-        return (int) $pdo->lastInsertId(DB::getDriverName() === 'pgsql' ? 'images_id_seq' : null);
+        $sequence = DB::getDriverName() === 'pgsql'
+            ? DB::selectOne("SELECT pg_get_serial_sequence('image', 'id') AS name")->name
+            : null;
+
+        return (int) $pdo->lastInsertId($sequence);
     }
 
     /** The photo itself, as a string (PostgreSQL returns it as a stream, so that is handled here). */
     public static function data(int $id): ?string
     {
-        $value = DB::table('images')->where('id', $id)->value('image_data');
+        $value = DB::table('image')->where('id', $id)->value('image_data');
 
         if ($value === null) {
             return null;

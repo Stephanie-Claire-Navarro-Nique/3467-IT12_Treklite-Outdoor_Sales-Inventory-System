@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class StockMovement extends Model
 {
+    protected $table = 'stock_movement';
+
     protected $fillable = ['variant_id', 'user_id', 'type', 'quantity_before', 'quantity_change', 'quantity_after', 'note'];
 
     /** receive = delivery, count = physical count, sale = sold at the counter, void = a sale was reversed and the items went back to stock. */

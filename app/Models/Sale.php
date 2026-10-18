@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 class Sale extends Model
 {
+    protected $table = 'sale';
+
     protected $fillable = [
         'invoice_number', 'user_id', 'customer_name', 'customer_address', 'customer_contact',
         'payment_method', 'payment_reference', 'payment_proof_id', 'payment_proof_hash',

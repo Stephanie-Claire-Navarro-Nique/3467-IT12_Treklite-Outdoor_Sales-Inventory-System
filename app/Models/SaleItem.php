@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SaleItem extends Model
 {
+    protected $table = 'sale_item';
+
     protected $fillable = ['sale_id', 'variant_id', 'quantity', 'unit_price', 'subtotal'];
 
     public function sale(): BelongsTo

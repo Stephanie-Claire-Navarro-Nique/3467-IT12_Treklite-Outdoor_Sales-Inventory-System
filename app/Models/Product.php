@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Product extends Model
 {
+    protected $table = 'product';
+
     protected $fillable = ['name', 'image_id', 'brand_id', 'category_id', 'description', 'price', 'is_active'];
 
     protected $casts = ['price' => 'decimal:2', 'is_active' => 'boolean'];
@@ -15,7 +17,7 @@ class Product extends Model
     /** Archived products are hidden from New Sale and stock lists but keep all their history. */
     public function scopeActive($query)
     {
-        return $query->where('products.is_active', true);
+        return $query->where('product.is_active', true);
     }
 
     public function variants(): HasMany

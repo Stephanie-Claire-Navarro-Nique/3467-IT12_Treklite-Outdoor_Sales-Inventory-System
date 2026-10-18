@@ -24,7 +24,7 @@ class ProfileController extends Controller
 
         $data = $request->validateWithBag('profile', [
             'name'  => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'email' => ['required', 'email', 'max:255', Rule::unique('user', 'email')->ignore($user->id)],
         ]);
 
         $user->update($data);

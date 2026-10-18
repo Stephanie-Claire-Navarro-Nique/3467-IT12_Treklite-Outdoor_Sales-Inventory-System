@@ -176,15 +176,15 @@ class ProductController extends Controller
         $data = $request->validate([
             'name'                         => ['required', 'string', 'max:255'],
             // Brand, category, size and color must already exist in the Item Options page (no free typing = no typos).
-            'category'                     => ['nullable', 'string', 'max:255', Rule::exists('categories', 'name')],
-            'brand'                        => ['nullable', 'string', 'max:255', Rule::exists('brands', 'name')],
+            'category'                     => ['nullable', 'string', 'max:255', Rule::exists('category', 'name')],
+            'brand'                        => ['nullable', 'string', 'max:255', Rule::exists('brand', 'name')],
             'description'                  => ['nullable', 'string', 'max:2000'],
             'price'                        => ['required', 'numeric', 'min:0'],
             'image'                        => ['nullable', 'image', 'max:4096'],
             'variants'                     => ['required', 'array', 'min:1'],
             'variants.*.id'                => ['nullable', 'integer'],
-            'variants.*.size'              => ['nullable', 'string', 'max:50', Rule::exists('sizes', 'name')],
-            'variants.*.color'             => ['nullable', 'string', 'max:50', Rule::exists('colors', 'name')],
+            'variants.*.size'              => ['nullable', 'string', 'max:50', Rule::exists('size', 'name')],
+            'variants.*.color'             => ['nullable', 'string', 'max:50', Rule::exists('color', 'name')],
             'variants.*.price'             => ['nullable', 'numeric', 'min:0'],
             'variants.*.initial_stock'     => ['nullable', 'integer', 'min:0', 'max:1000000'],   // new rows must be >= 1 (checked below)
             'variants.*.low_stock_threshold' => ['required', 'integer', 'min:0'],
@@ -207,7 +207,7 @@ class ProductController extends Controller
 
     /**
      * Fields saved on the product. Brand and category are typed names: an existing one is reused,
-     * a new one is added to the brands / categories table, and empty means "none".
+     * a new one is added to the brand / category table, and empty means "none".
      */
     private function productFields(Request $request, array $data): array
     {

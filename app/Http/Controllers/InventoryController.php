@@ -41,11 +41,11 @@ class InventoryController extends Controller
         // ---------- 1. Brand overview ----------
         if (! $filtering) {
             $brands = Product::query()
-                ->where('products.is_active', true)
-                ->leftJoin('brands as b', 'b.id', '=', 'products.brand_id')
-                ->leftJoin('product_variants as v', 'v.product_id', '=', 'products.id')
+                ->where('product.is_active', true)
+                ->leftJoin('brand as b', 'b.id', '=', 'product.brand_id')
+                ->leftJoin('product_variant as v', 'v.product_id', '=', 'product.id')
                 ->selectRaw("COALESCE(b.name, '') as brand_name")
-                ->selectRaw('COUNT(DISTINCT products.id) as product_count')
+                ->selectRaw('COUNT(DISTINCT product.id) as product_count')
                 ->selectRaw('COALESCE(SUM(v.quantity), 0) as units')
                 ->selectRaw('COALESCE(SUM(CASE WHEN v.id IS NOT NULL AND v.quantity <= 0 THEN 1 ELSE 0 END), 0) as out_count')
                 ->selectRaw('COALESCE(SUM(CASE WHEN v.quantity > 0 AND v.quantity <= v.low_stock_threshold THEN 1 ELSE 0 END), 0) as low_count')

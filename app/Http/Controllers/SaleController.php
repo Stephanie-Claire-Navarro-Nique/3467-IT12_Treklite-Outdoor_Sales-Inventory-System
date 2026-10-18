@@ -197,7 +197,7 @@ class SaleController extends Controller
             'payment_reference'  => ['required_unless:payment_method,cash', 'nullable', 'string', 'max:100'],
             'payment_proof'      => ['required_unless:payment_method,cash', 'nullable', 'image', 'max:4096'],
             'items'              => ['required', 'array', 'min:1'],
-            'items.*.variant_id' => ['required', 'integer', 'exists:product_variants,id'],
+            'items.*.variant_id' => ['required', 'integer', 'exists:product_variant,id'],
             'items.*.quantity'   => ['required', 'integer', 'min:1'],
         ], [
             'amount_tendered.required'        => 'Enter the amount received from the customer.',

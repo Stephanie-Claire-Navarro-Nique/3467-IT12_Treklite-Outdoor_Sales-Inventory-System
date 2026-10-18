@@ -12,25 +12,32 @@ use Throwable;
 /**
  * Database backup and restore without needing mysqldump on the server.
  * A backup is one JSON file holding every row of the business tables.
- * Product and payment photos live in the `images` table, so they are inside the file too
+ * Product and payment photos live in the `image` table, so they are inside the file too
  * (as text, because a JSON file cannot hold raw picture bytes).
  */
 class BackupService
 {
     /** Parents first, then the tables that point to them. */
     public const TABLES = [
-        'users', 'categories', 'brands', 'sizes', 'colors', 'images', 'products', 'product_variants',
-        'sales', 'voids', 'sale_items', 'stock_movements', 'activity_logs',
+        'user', 'category', 'brand', 'size', 'color', 'image', 'product', 'product_variant',
+        'sale', 'void', 'sale_item', 'stock_movement', 'activity_log',
+    ];
+
+    /** Backups made before the tables were renamed to singular still use these (plural) names. */
+    private const LEGACY = [
+        'users' => 'user', 'categories' => 'category', 'brands' => 'brand', 'sizes' => 'size', 'colors' => 'color',
+        'images' => 'image', 'products' => 'product', 'product_variants' => 'product_variant', 'sales' => 'sale',
+        'voids' => 'void', 'sale_items' => 'sale_item', 'stock_movements' => 'stock_movement', 'activity_logs' => 'activity_log',
     ];
 
     /** Backups made before the database update (version 1) have a different structure and cannot be restored. */
     private const VERSION = 2;
 
     /** Photo bytes are saved as base64 text inside the JSON file. */
-    private const BINARY = ['images' => 'image_data'];
+    private const BINARY = ['image' => 'image_data'];
 
     /** Photos are inserted a few at a time, so one insert never gets bigger than the database allows. */
-    private const CHUNK = ['images' => 5];
+    private const CHUNK = ['image' => 5];
 
     private const DIR = 'backups';
 
@@ -105,6 +112,14 @@ class BackupService
 
         if (($data['version'] ?? 1) < self::VERSION) {
             throw new InvalidArgumentException('This backup was made before the database update (photos, brands, categories, sizes, colors), so it cannot be restored. Create a new backup.');
+        }
+
+        // Older backup files use the plural table names; read them under the new singular names.
+        foreach (self::LEGACY as $old => $new) {
+            if (isset($data['tables'][$old]) && ! isset($data['tables'][$new])) {
+                $data['tables'][$new] = $data['tables'][$old];
+                unset($data['tables'][$old]);
+            }
         }
 
         // Validate everything BEFORE touching the database.

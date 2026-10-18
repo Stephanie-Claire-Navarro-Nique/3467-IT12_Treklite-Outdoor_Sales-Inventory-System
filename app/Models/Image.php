@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Image extends Model
 {
+    protected $table = 'image';
+
     protected $fillable = ['file_name', 'mime_type', 'file_size', 'image_data'];
 
     protected $hidden = ['image_data'];

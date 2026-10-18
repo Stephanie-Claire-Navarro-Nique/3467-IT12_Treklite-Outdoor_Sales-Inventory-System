@@ -75,7 +75,7 @@ class BackupController extends Controller
 
         ActivityLog::record('backup_restore', 'Restored the database from ' . $request->file('backup_file')->getClientOriginalName() . ' (' . array_sum($counts) . ' records).');
 
-        // The users table was replaced, so the current session must start again.
+        // The user table was replaced, so the current session must start again.
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

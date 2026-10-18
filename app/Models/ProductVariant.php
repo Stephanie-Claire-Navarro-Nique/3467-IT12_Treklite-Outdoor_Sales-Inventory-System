@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ProductVariant extends Model
 {
+    protected $table = 'product_variant';
+
     protected $fillable = ['product_id', 'size_id', 'color_id', 'price', 'initial_stock', 'quantity', 'low_stock_threshold'];
 
     protected $casts = ['price' => 'decimal:2'];

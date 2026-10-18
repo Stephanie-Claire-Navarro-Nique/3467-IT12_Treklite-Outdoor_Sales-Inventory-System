@@ -5,10 +5,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/** The record created when the Owner voids a sale: which sale, who, when and why (table: voids). */
+/** The record created when the Owner voids a sale: which sale, who, when and why (table: void). */
 class SaleVoid extends Model
 {
-    protected $table = 'voids';
+    protected $table = 'void';
 
     protected $fillable = ['sale_id', 'voided_by', 'void_reason', 'voided_at'];
 

@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Size extends Model
 {
+    protected $table = 'size';
+
     protected $fillable = ['name', 'sort_order', 'is_active'];
 
     protected $casts = ['is_active' => 'boolean'];

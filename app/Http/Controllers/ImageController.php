@@ -16,7 +16,7 @@ class ImageController extends Controller
     public function show(Request $request, int $image)
     {
         // Look at the small details first, so the photo itself is only read when it is really needed.
-        $meta = DB::table('images')->where('id', $image)->first(['id', 'mime_type', 'file_size', 'updated_at']);
+        $meta = DB::table('image')->where('id', $image)->first(['id', 'mime_type', 'file_size', 'updated_at']);
         abort_unless($meta, 404);
 
         // A payment photo can only be opened by the Owner or by the cashier who made that sale.

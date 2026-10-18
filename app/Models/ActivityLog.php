@@ -9,6 +9,8 @@ use Throwable;
 /** One line in the Owner's activity trail ("who did what"). */
 class ActivityLog extends Model
 {
+    protected $table = 'activity_log';
+
     protected $fillable = ['user_id', 'action_type', 'action', 'description'];
 
     public const ACTION_LABELS = [
@@ -48,7 +50,7 @@ class ActivityLog extends Model
         'backup_restore'  => ['#a61e4d', '#ffffff'],   // plum
     ];
 
-    /** Group of each action (saved in activity_logs.action_type); the Activity Log can color the entries by it. */
+    /** Group of each action (saved in activity_log.action_type); the Activity Log can color the entries by it. */
     public const ACTION_TYPES = [
         'sale'    => 'Sales',
         'product' => 'Products',

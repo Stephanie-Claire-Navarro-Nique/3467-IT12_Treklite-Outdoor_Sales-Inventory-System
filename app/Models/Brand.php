@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Brand extends Model
 {
+    protected $table = 'brand';
+
     protected $fillable = ['name', 'is_active'];
 
     protected $casts = ['is_active' => 'boolean'];
