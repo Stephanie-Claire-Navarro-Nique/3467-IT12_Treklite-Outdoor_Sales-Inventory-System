@@ -8,15 +8,7 @@
         <div class="d-flex gap-2">
             @if (auth()->user()->hasFullAccess())
                 {{-- Downloads every sale that matches the filters below (not just this page). The links are updated by the script at the bottom. --}}
-                <div class="dropdown">
-                    <button class="btn btn-outline-secondary btn-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Export (PDF / Excel)" aria-label="Export">
-                        <i class="bi bi-download"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" data-export="pdf" href="{{ route('sales.export', ['format' => 'pdf']) }}"><i class="bi bi-file-earmark-pdf text-danger"></i> PDF</a></li>
-                        <li><a class="dropdown-item" data-export="xlsx" href="{{ route('sales.export', ['format' => 'xlsx']) }}"><i class="bi bi-file-earmark-excel text-success"></i> Excel (.xlsx)</a></li>
-                    </ul>
-                </div>
+                <a class="btn btn-outline-secondary btn-icon" data-export="pdf" href="{{ route('sales.export', ['format' => 'pdf']) }}" title="Export (PDF)" aria-label="Export PDF"><i class="bi bi-file-earmark-pdf"></i></a>
             @endif
             <a href="{{ route('sales.create') }}" class="btn btn-success btn-icon" title="New Sale" aria-label="New Sale"><i class="bi bi-cart-plus"></i></a>
         </div>

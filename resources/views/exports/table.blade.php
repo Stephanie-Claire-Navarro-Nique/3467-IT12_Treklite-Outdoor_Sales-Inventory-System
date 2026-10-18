@@ -44,6 +44,13 @@
         .empty { text-align: center; color: #6b7a72; padding: 14px 0; }
         .note { margin-top: 8px; font-size: 7pt; color: #6b7a72; font-style: italic; }
 
+        .box { border: 1px solid #d3dbd6; background: #f7faf8; padding: 6px 9px; margin: 8px 0; }
+        .box-title { font-weight: bold; color: #1e5b31; font-size: 8pt; margin-bottom: 3px; }
+        .box p { margin: 0 0 3px 0; font-size: 7.5pt; line-height: 1.4; }
+        table.sign { width: 100%; border-collapse: collapse; margin-top: 30px; }
+        table.sign td { width: 42%; border-top: 1px solid #333; padding-top: 3px; text-align: center; font-size: 7.5pt; }
+        table.sign td.gap { width: 16%; border: 0; }
+
         .footer { position: fixed; bottom: -12mm; left: 0; right: 0; font-size: 6.5pt; color: #6b7a72; border-top: 1px solid #d3dbd6; padding-top: 3px; }
     </style>
 </head>
@@ -57,6 +64,14 @@
     @foreach ($d['subtitle'] as $line)
         <div class="sub">{{ $line }}</div>
     @endforeach
+    <div class="sub">Prepared by: {{ $d['prepared_by'] }} &middot; Date prepared: {{ now()->format('M d, Y h:i A') }}</div>
+
+    @if (! empty($d['analysis']))
+        <div class="box">
+            <div class="box-title">Summary and Explanation</div>
+            @foreach ($d['analysis'] as $line)<p>{{ $line }}</p>@endforeach
+        </div>
+    @endif
 
     @if (! empty($d['summary']))
         <table class="summary">
@@ -110,5 +125,14 @@
     @if ($d['footnote'])
         <div class="note">{{ $d['footnote'] }}</div>
     @endif
+
+    @if ($d['conclusion'])
+        <div class="box"><div class="box-title">Conclusion</div><p>{{ $d['conclusion'] }}</p></div>
+    @endif
+
+    <table class="sign"><tr>
+        <td>Prepared by: {{ $d['prepared_by'] }}</td><td class="gap"></td>
+        <td>Approved by (Owner): name and signature</td>
+    </tr></table>
 </body>
 </html>

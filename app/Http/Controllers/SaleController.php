@@ -88,7 +88,7 @@ class SaleController extends Controller
                 ['key' => 'tendered',  'label' => 'Amount received', 'type' => 'money',    'align' => 'right',  'width' => 16, 'pdf' => false],
                 ['key' => 'change',    'label' => 'Change',          'type' => 'money',    'align' => 'right',  'width' => 12, 'pdf' => false],
                 ['key' => 'status',    'label' => 'Status',          'type' => 'text',     'align' => 'center', 'width' => 12],
-                ['key' => 'reason',    'label' => 'Void reason',     'type' => 'text',     'align' => 'left',   'width' => 24, 'pdf' => false],
+                ['key' => 'reason',    'label' => 'Void reason',     'type' => 'text',     'align' => 'left',   'width' => 24],
             ],
             'rows' => $sales->map(fn ($s) => [
                 'invoice'   => $s->invoice_number,
@@ -108,9 +108,13 @@ class SaleController extends Controller
             'totals' => ['label' => 'Total (completed sales only)', 'values' => ['total' => (float) $active->sum('total_amount')]],
             'footnote'    => $voidedCount > 0 ? "Struck-through rows are voided sales. They are listed for reference and are not counted in the total." : null,
             'orientation' => 'landscape',
+            'analysis' => ['This report lists ' . $sales->count() . ' sale(s) matching: ' . implode('; ', $notes) . '. '
+                . $active->count() . ' completed sale(s) total ₱' . number_format((float) $active->sum('total_amount'), 2) . '; '
+                . $voidedCount . ' voided sale(s) are shown struck through and are not counted.'],
+            'conclusion' => 'The total revenue of the completed sales listed is ₱' . number_format((float) $active->sum('total_amount'), 2) . '.',
         ];
 
-        return TableExport::download($data, $request->query('format') === 'pdf' ? 'pdf' : 'xlsx');
+        return TableExport::download($data, 'pdf');
     }
 
     /** Filters used by Sales Records and its PDF / Excel export. Staff only ever see the sales they processed. */

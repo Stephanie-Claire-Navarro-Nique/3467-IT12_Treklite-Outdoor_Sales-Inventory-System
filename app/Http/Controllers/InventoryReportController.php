@@ -34,6 +34,9 @@ class InventoryReportController extends Controller
             $notes[] = 'Showing low / out-of-stock items only';
         }
 
+        $attention = $variants->filter(fn ($v) => $v->isOutOfStock() || $v->isLowStock())->take(5)
+            ->map(fn ($v) => $v->product->name . ' (' . $v->label . ')')->implode(', ');
+
         $data = [
             'title'    => 'Inventory Report',
             'filename' => 'treklite-inventory-report-' . now()->format('Ymd-His'),
@@ -77,9 +80,18 @@ class InventoryReportController extends Controller
             ]],
             'footnote'    => null,
             'orientation' => 'landscape',
+            'analysis' => [
+                'As of ' . now()->format('M d, Y h:i A') . ', the store has ' . number_format($totalUnits) . ' unit(s) on hand with a stock value of ₱'
+                    . number_format($totalValue, 2) . '. ' . $lowCount . ' item(s) are low on stock and ' . $outCount . ' are out of stock.',
+                'For ' . $periodLabel . ', ' . $periodReceived . ' unit(s) were received, ' . $periodSold . ' were sold, and stock counts adjusted the quantity by '
+                    . $periodAdjusted . ' unit(s).',
+            ],
+            'conclusion' => ($lowCount + $outCount) > 0
+                ? 'Items needing attention include: ' . $attention . '. The Owner should consider reordering them.'
+                : 'All items are above their low-stock levels; no restocking is needed at this time.',
         ];
 
-        return TableExport::download($data, $request->query('format') === 'pdf' ? 'pdf' : 'xlsx');
+        return TableExport::download($data, 'pdf');
     }
 
     /** Everything the Inventory Report needs, worked out from the period and switch in the link. */

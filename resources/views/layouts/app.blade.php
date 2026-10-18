@@ -209,20 +209,21 @@
 
         /* Product with no photo: a generic picture of that kind of product (the tooltip says what it is) */
         .ph-thumb {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            line-height: 1;
-            border-radius: .4rem;
-            background: #fff;
-            border: 1px solid #d9dde0;
-            color: #111;           /* black line drawing on white */
-            padding: 14%;
-            cursor: help;
-            user-select: none;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; line-height: 1;
+            border-radius: .6rem;
+            background: radial-gradient(circle at 30% 25%, #ffffff 0%, #eaf5ee 55%, #d3e8da 100%);
+            border: 1px solid #c5dccb;
+            color: #1e5b31;
+            padding: 18%;
+            box-shadow: inset 0 -6px 14px rgba(30,91,49,.08);
+            cursor: help; user-select: none;
         }
-        .ph-thumb .ph-svg, .placeholder-img .ph-svg { width: 100%; height: 100%; display: block; }
+        .ph-thumb .ph-svg, .placeholder-img .ph-svg {
+            width: 100%; height: 100%; display: block;
+            stroke-width: 2; opacity: .85;
+            filter: drop-shadow(0 2px 2px rgba(30,91,49,.18));
+        }
 
         /* The one fast tooltip (see script at the bottom): shows at once, can never get stuck */
         .fast-tip {
