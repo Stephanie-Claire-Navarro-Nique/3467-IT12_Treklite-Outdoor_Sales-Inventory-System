@@ -60,7 +60,7 @@
         <div class="card-body p-4">
             <div class="text-center mb-3">
                 <h4 class="mb-0">Treklite Outdoor</h4>
-                <div class="small text-muted">Door 1, Amarelio Building, Green Meadow Subdivision</div>
+                <div class="small text-muted">Door 1, Amarillo Building, Green Meadow Subdivision</div>
                 <div class="fw-bold mt-2 text-uppercase">Sales Invoice @if ($sale->isVoided()) <span class="badge bg-danger">VOIDED</span> @endif</div>
             </div>
 
