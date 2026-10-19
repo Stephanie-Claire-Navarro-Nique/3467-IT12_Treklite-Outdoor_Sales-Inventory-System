@@ -215,12 +215,13 @@
             background: radial-gradient(circle at 30% 25%, #ffffff 0%, #eaf5ee 55%, #d3e8da 100%);
             border: 1px solid #c5dccb;
             color: #1e5b31;
-            padding: 18%;
             box-shadow: inset 0 -6px 14px rgba(30,91,49,.08);
             cursor: help; user-select: none;
         }
+        /* The icon takes a share of the box itself (a % padding would be measured against the parent's width, not the box, and made the icon tiny) */
+        .ph-thumb .ph-svg { width: 64%; height: 64%; display: block; }
+        .placeholder-img .ph-svg { width: 100%; height: 100%; display: block; }
         .ph-thumb .ph-svg, .placeholder-img .ph-svg {
-            width: 100%; height: 100%; display: block;
             stroke-width: 2; opacity: .85;
             filter: drop-shadow(0 2px 2px rgba(30,91,49,.18));
         }

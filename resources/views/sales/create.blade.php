@@ -24,8 +24,8 @@
         /* The item list scrolls inside the Cart box; the header, customer/payment box and total stay in place. */
         .cart-lines { max-height: 420px; overflow-y: auto; overscroll-behavior: contain; padding-right: .25rem; }
         .cart-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: .35rem; background: #e9edeb; flex-shrink: 0; }
-        /* No-photo placeholder in the cart: a fixed padding (the layout's 18% padding is measured against the whole row, which blew the box up and squeezed the icon out) */
-        .cart-thumb.ph-thumb { padding: 7px; background: radial-gradient(circle at 30% 25%, #ffffff 0%, #eaf5ee 55%, #d3e8da 100%); }
+        /* No-photo placeholder in the cart keeps the green look (.cart-thumb alone would make it flat grey) */
+        .cart-thumb.ph-thumb { background: radial-gradient(circle at 30% 25%, #ffffff 0%, #eaf5ee 55%, #d3e8da 100%); }
         .qty-btn { width: 28px; padding: 0; }
 
         .variant-chip { min-width: 64px; }
