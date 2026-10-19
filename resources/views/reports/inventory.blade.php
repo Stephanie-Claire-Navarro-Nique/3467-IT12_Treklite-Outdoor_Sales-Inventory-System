@@ -5,6 +5,12 @@
 @section('content')
     <style>
         @page { size: A4 landscape; margin: 10mm; }
+        @media print {
+            .chart-card { break-inside: avoid; }
+            .chart-box { height: 170px !important; }
+        }
+        .chart-box { position: relative; height: 240px; }
+        .chart-explain { font-size: .8rem; color: #4b5a52; margin: .6rem 0 0; }
     </style>
 
     @include('reports.partials.styles')
@@ -25,7 +31,15 @@
     <div class="print-header d-none d-print-block">
         <div class="ph-brand">Treklite Outdoor</div>
         <div class="ph-title">Inventory Report</div>
-        <div class="ph-meta">Printed {{ now()->format('M d, Y h:i A') }}</div>
+        <div class="ph-meta">Stock as of {{ now()->format('M d, Y h:i A') }} &middot; Movement for {{ $report['periodLabel'] }}</div>
+        <div class="ph-meta">Prepared by: {{ $report['preparedBy'] }}@if ($report['preparedRole']) ({{ $report['preparedRole'] }})@endif &middot; Date prepared: {{ $report['datePrepared'] }}</div>
+    </div>
+
+    <div class="report-note mb-3">
+        <div class="rn-title">Summary and Explanation</div>
+        @foreach ($report['summary'] as $line)
+            <p>{{ $line }}</p>
+        @endforeach
     </div>
 
     <div class="d-flex justify-content-between align-items-center mb-3 d-print-none">
@@ -101,6 +115,36 @@
             <div class="stat-label"><i class="bi bi-x-circle"></i> Out of stock</div><div class="stat-value">{{ $outCount }}</div></div></div></div>
     </div>
 
+    {{-- ============ Charts ============ --}}
+    <div class="row g-3 mb-3">
+        <div class="col-md-5">
+            <div class="card shadow-sm h-100 chart-card">
+                <div class="card-header fw-bold"><i class="bi bi-pie-chart"></i> Stock status of items</div>
+                <div class="card-body">
+                    @if (empty($report['status']))
+                        <div class="text-center text-muted py-5">Nothing to show.</div>
+                    @else
+                        <div class="chart-box"><canvas id="statusChart"></canvas></div>
+                        <p class="chart-explain">{{ $report['statusExplain'] }}</p>
+                    @endif
+                </div>
+            </div>
+        </div>
+        <div class="col-md-7">
+            <div class="card shadow-sm h-100 chart-card">
+                <div class="card-header fw-bold"><i class="bi bi-bar-chart-line"></i> Top products by stock value</div>
+                <div class="card-body">
+                    @if (empty($report['topProducts']))
+                        <div class="text-center text-muted py-5">Nothing to show.</div>
+                    @else
+                        <div class="chart-box"><canvas id="valueChart"></canvas></div>
+                        <p class="chart-explain">{{ $report['valueExplain'] }}</p>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- Shown 10 per page on screen; the printed report always has every row. --}}
     <div data-ctable data-per-page="10">
     <div class="card shadow-sm">
@@ -164,4 +208,63 @@
     </div>
     <div data-pager class="no-print"></div>
     </div>
+
+    <div class="report-note mt-3">
+        <div class="rn-title">Conclusion</div>
+        <p>{{ $report['conclusion'] }}</p>
+    </div>
+
+    <div class="signature-row d-none d-print-flex">
+        <div class="sig"><div class="sig-line"></div>Prepared by: {{ $report['preparedBy'] }}</div>
+        <div class="sig"><div class="sig-line"></div>Approved by (Owner): name and signature</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const peso = n => '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            const statusEl = document.getElementById('statusChart');
+            if (statusEl) {
+                new Chart(statusEl, {
+                    type: 'doughnut',
+                    data: {
+                        labels: @json($report['statusLabels']),
+                        datasets: [{
+                            data: @json($report['statusCounts']),
+                            backgroundColor: ['#1e5b31', '#f0ad4e', '#dc3545'],
+                            borderWidth: 2,
+                        }],
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' },
+                            tooltip: { callbacks: { label: ctx => ctx.label + ': ' + ctx.parsed + ' item(s)' } },
+                        },
+                    },
+                });
+            }
+
+            const valueEl = document.getElementById('valueChart');
+            if (valueEl) {
+                new Chart(valueEl, {
+                    type: 'bar',
+                    data: {
+                        labels: @json($report['topLabels']),
+                        datasets: [{ label: 'Stock value', data: @json($report['topValues']), backgroundColor: '#1e5b31', borderRadius: 4, maxBarThickness: 28 }],
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => peso(ctx.parsed.x) } } },
+                        scales: {
+                            x: { beginAtZero: true, ticks: { callback: v => '₱' + Number(v).toLocaleString('en-PH') } },
+                            y: { grid: { display: false } },
+                        },
+                    },
+                });
+            }
+        });
+    </script>
 @endsection

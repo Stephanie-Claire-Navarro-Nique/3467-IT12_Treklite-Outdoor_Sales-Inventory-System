@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Sale;
+use App\Support\SalesReportNarrative;
 use App\Support\TableExport;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -11,13 +12,17 @@ class ReportController extends Controller
 {
     public function sales(Request $request)
     {
-        return view('reports.sales', $this->salesData($request));
+        $data = $this->salesData($request);
+
+        return view('reports.sales', $data + ['report' => SalesReportNarrative::build($data, $request->user())]);
     }
 
     /** The Sales Report as a PDF (?format=pdf) or an Excel file (?format=xlsx, the default): same period and numbers as the page. */
     public function export(Request $request)
     {
-        extract($this->salesData($request));   // sales, from, to, period, totalRevenue, byPayment, voidedCount, voidedTotal ...
+        $salesData = $this->salesData($request);
+        extract($salesData);   // sales, from, to, period, totalRevenue, byPayment, voidedCount, voidedTotal ...
+        $report = SalesReportNarrative::build($salesData, $request->user());
 
         $periodText = $from->isSameDay($to)
             ? $from->format('M d, Y')
@@ -35,19 +40,21 @@ class ReportController extends Controller
             $summary[] = [$label . ' (' . ($byPayment[$key]['count'] ?? 0) . ')', (float) ($byPayment[$key]['total'] ?? 0), 'money'];
         }
 
-        $single  = $from->isSameDay($to);
-        $buckets = $sales->groupBy(fn ($s) => $single ? $s->sold_at->format('h A') : $s->sold_at->format('M d, Y'))
-            ->map(fn ($g) => (float) $g->sum('total_amount'));
-        $peak    = $buckets->sortDesc()->keys()->first();
-        $methods = $byPayment->map(fn ($v, $k) => (Sale::PAYMENT_LABELS[$k] ?? $k) . ' ₱' . number_format($v['total'], 2)
-            . ' (' . round($v['total'] / max($totalRevenue, 0.01) * 100) . '%)')->implode(', ');
-        $topKey  = $byPayment->sortByDesc('total')->keys()->first();
-        $avg     = $sales->count() ? $totalRevenue / $sales->count() : 0;
-
         $data = [
             'title'    => 'Sales Report',
             'filename' => 'treklite-sales-report-' . $from->format('Ymd') . '-' . $to->format('Ymd'),
-            'subtitle' => ['Period: ' . $periodText],
+            'subtitle' => [
+                'Period: ' . $periodText,
+                'Prepared by: ' . $report['preparedBy'] . ($report['preparedRole'] ? ' (' . $report['preparedRole'] . ')' : '') . ' · Date prepared: ' . $report['datePrepared'],
+            ],
+            // Same words and charts as the printed page (PDF draws the charts itself; Excel gets the text).
+            'explanation' => ['heading' => 'Summary and Explanation', 'lines' => $report['summary']],
+            'charts'      => [
+                ['title' => $report['timeTitle'], 'type' => 'bars', 'labels' => $report['timeLabels'], 'values' => $report['timeRevenue'], 'explain' => $report['timeExplain']],
+                ['title' => 'Sales by payment method', 'type' => 'share', 'rows' => $report['pay'], 'explain' => $report['payExplain']],
+            ],
+            'conclusion'  => $report['conclusion'],
+            'signatures'  => ['Prepared by: ' . $report['preparedBy'], 'Approved by (Owner): name and signature'],
             'summary'  => $summary,
             'columns'  => [
                 ['key' => 'invoice',  'label' => 'Invoice #',    'type' => 'text',     'align' => 'left',  'width' => 16],
@@ -70,21 +77,9 @@ class ReportController extends Controller
                 ? $voidedCount . ' voided sale(s) (₱' . number_format($voidedTotal, 2) . ') in this period are not included.'
                 : null,
             'orientation' => 'portrait',
-            'analysis' => $sales->count() ? [
-                'This report covers ' . $periodText . '. ' . $sales->count() . ' completed sale(s) were recorded, with a total revenue of ₱'
-                    . number_format($totalRevenue, 2) . ' and an average of ₱' . number_format($avg, 2) . ' per sale.',
-                'Sales per payment method: ' . $methods . '.',
-                'On the Sales Report screen, the chart of revenue by ' . ($single ? 'hour' : 'day') . ' shows when the sales were made; the highest was '
-                    . $peak . ' with ₱' . number_format($buckets[$peak], 2) . '.',
-            ] : ['This report covers ' . $periodText . '. No completed sales were recorded in this period.'],
-            'conclusion' => $sales->count()
-                ? 'Sales for this period totalled ₱' . number_format($totalRevenue, 2) . '. The largest share came from '
-                    . (Sale::PAYMENT_LABELS[$topKey] ?? $topKey) . ', and ' . $peak . ' was the busiest ' . ($single ? 'hour' : 'day')
-                    . '. Voided sales are not included.'
-                : 'There is no sales activity to report for this period.',
         ];
 
-        return TableExport::download($data, 'pdf');
+        return TableExport::download($data, $request->query('format') === 'pdf' ? 'pdf' : 'xlsx');
     }
 
     /** Everything the Sales Report needs, worked out from the period in the link. */

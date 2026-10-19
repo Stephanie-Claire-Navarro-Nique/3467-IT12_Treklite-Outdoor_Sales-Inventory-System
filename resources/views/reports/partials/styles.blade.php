@@ -1,4 +1,11 @@
 <style>
+    /* ---------- Report text blocks (summary / conclusion) and signature lines ---------- */
+    .report-note { border: 1px solid #cfd8d3; background: #f7faf8; border-radius: .5rem; padding: .6rem .9rem; }
+    .report-note .rn-title { font-weight: 700; font-size: .85rem; color: #1e5b31; margin-bottom: .25rem; }
+    .report-note p { font-size: .8rem; margin: 0 0 .25rem; }
+    .signature-row { justify-content: space-between; gap: 3rem; margin-top: 2.2rem; }
+    .signature-row .sig { flex: 1; text-align: center; font-size: .8rem; }
+    .signature-row .sig-line { border-top: 1px solid #333; margin-bottom: 4px; }
     /* ---------- Soft stat cards (easy on the eyes) ---------- */
     .stat-soft { border: 1px solid transparent; border-radius: .75rem; }
     .stat-soft .stat-label { font-size: .8rem; font-weight: 600; letter-spacing: .02em; }

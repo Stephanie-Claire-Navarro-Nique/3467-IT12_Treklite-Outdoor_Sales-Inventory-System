@@ -10,6 +10,7 @@
             .chart-box { height: 220px !important; }
         }
         .chart-box { position: relative; height: 280px; }
+        .chart-explain { font-size: .8rem; color: #4b5a52; margin: .6rem 0 0; }
     </style>
 
     @include('reports.partials.styles')
@@ -21,54 +22,14 @@
         ], $over), fn ($v) => $v !== null));
         $periodOptions = ['day' => 'Today', 'week' => 'Week', 'month' => 'Month', 'year' => 'Year'];
 
-        // ---------- chart data (built from the data the controller already passes) ----------
-        $singleDay = $from->isSameDay($to);
-        $byMonthView = $from->diffInDays($to) > 120;
-        $timeLabels = [];
-        $timeRevenue = [];
-        $timeCounts = [];
-
-        if ($singleDay) {
-            // Group by hour of the day
-            $byHour = $sales->groupBy(fn ($s) => (int) $s->sold_at->format('G'));
-            $hours = $byHour->keys()->all();
-            $minH = count($hours) ? min(8, min($hours)) : 8;
-            $maxH = count($hours) ? max(20, max($hours)) : 20;
-            foreach (range($minH, $maxH) as $h) {
-                $group = $byHour->get($h, collect());
-                $timeLabels[]  = \Carbon\Carbon::createFromTime($h)->format('g A');
-                $timeRevenue[] = round((float) $group->sum('total_amount'), 2);
-                $timeCounts[]  = $group->count();
-            }
-        } elseif ($byMonthView) {
-            $byMonth = $sales->groupBy(fn ($s) => $s->sold_at->format('Y-m'));
-            foreach (\Carbon\CarbonPeriod::create($from->copy()->startOfMonth(), '1 month', $to->copy()->startOfMonth()) as $m) {
-                $group = $byMonth->get($m->format('Y-m'), collect());
-                $timeLabels[]  = $m->format('M Y');
-                $timeRevenue[] = round((float) $group->sum('total_amount'), 2);
-                $timeCounts[]  = $group->count();
-            }
-        } else {
-            // Group by day, including days with no sales
-            $byDay = $sales->groupBy(fn ($s) => $s->sold_at->format('Y-m-d'));
-            $dayRange = \Carbon\CarbonPeriod::create($from->copy()->startOfDay(), $to->copy()->startOfDay());
-            foreach ($dayRange as $day) {
-                $group = $byDay->get($day->format('Y-m-d'), collect());
-                $timeLabels[]  = $day->format('M d');
-                $timeRevenue[] = round((float) $group->sum('total_amount'), 2);
-                $timeCounts[]  = $group->count();
-            }
-        }
-
-        $payLabels = [];
-        $payTotals = [];
-        foreach (\App\Models\Sale::PAYMENT_LABELS as $key => $label) {
-            $t = (float) ($byPayment[$key]['total'] ?? 0);
-            if ($t > 0) {
-                $payLabels[] = $label;
-                $payTotals[] = round($t, 2);
-            }
-        }
+        // ---------- chart data (built once in SalesReportNarrative, shared with the PDF) ----------
+        $singleDay   = $report['grain'] === 'hour';
+        $byMonthView = $report['grain'] === 'month';
+        $timeLabels  = $report['timeLabels'];
+        $timeRevenue = $report['timeRevenue'];
+        $timeCounts  = $report['timeCounts'];
+        $payLabels   = $report['payLabels'];
+        $payTotals   = $report['payTotals'];
     @endphp
 
     @if (($voidedCount ?? 0) > 0)
@@ -81,7 +42,16 @@
     <div class="print-header d-none d-print-block">
         <div class="ph-brand">Treklite Outdoor</div>
         <div class="ph-title">Sales Report</div>
-        <div class="ph-meta">Printed {{ now()->format('M d, Y h:i A') }}</div>
+        <div class="ph-meta">Period: {{ $report['periodText'] }}</div>
+        <div class="ph-meta">Prepared by: {{ $report['preparedBy'] }}@if ($report['preparedRole']) ({{ $report['preparedRole'] }})@endif &middot; Date prepared: {{ $report['datePrepared'] }}</div>
+    </div>
+
+    {{-- Summary and explanation: always on paper, and on screen too --}}
+    <div class="report-note mb-3">
+        <div class="rn-title">Summary and Explanation</div>
+        @foreach ($report['summary'] as $line)
+            <p>{{ $line }}</p>
+        @endforeach
     </div>
 
     <div class="d-flex justify-content-between align-items-center mb-3 d-print-none">
@@ -161,6 +131,7 @@
                         <div class="text-center text-muted py-5">No sales in this range.</div>
                     @else
                         <div class="chart-box"><canvas id="timeChart"></canvas></div>
+                        <p class="chart-explain">{{ $report['timeExplain'] }}</p>
                     @endif
                 </div>
             </div>
@@ -173,6 +144,7 @@
                         <div class="text-center text-muted py-5">No sales in this range.</div>
                     @else
                         <div class="chart-box"><canvas id="payChart"></canvas></div>
+                        <p class="chart-explain">{{ $report['payExplain'] }}</p>
                     @endif
                 </div>
             </div>
@@ -210,6 +182,16 @@
         </table>
     </div>
     <div data-pager class="no-print"></div>
+    </div>
+
+    <div class="report-note mt-3">
+        <div class="rn-title">Conclusion</div>
+        <p>{{ $report['conclusion'] }}</p>
+    </div>
+
+    <div class="signature-row d-none d-print-flex">
+        <div class="sig"><div class="sig-line"></div>Prepared by: {{ $report['preparedBy'] }}</div>
+        <div class="sig"><div class="sig-line"></div>Approved by (Owner): name and signature</div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>

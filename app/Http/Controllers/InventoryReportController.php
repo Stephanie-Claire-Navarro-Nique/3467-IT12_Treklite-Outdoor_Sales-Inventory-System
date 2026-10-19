@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ProductVariant;
 use App\Models\StockMovement;
+use App\Support\InventoryReportNarrative;
 use App\Support\TableExport;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -18,24 +19,26 @@ class InventoryReportController extends Controller
 
     public function index(Request $request)
     {
-        return view('reports.inventory', $this->reportData($request));
+        $data = $this->reportData($request);
+
+        return view('reports.inventory', $data + ['report' => InventoryReportNarrative::build($data, $request->user())]);
     }
 
     /** The Inventory Report as a PDF (?format=pdf) or an Excel file (?format=xlsx, the default): same period, switch and numbers as the page. */
     public function export(Request $request)
     {
-        extract($this->reportData($request));   // variants, onlyAttention, totals, period, from, to, periodLabel ...
+        $reportData = $this->reportData($request);
+        extract($reportData);   // variants, onlyAttention, totals, period, from, to, periodLabel ...
+        $report = InventoryReportNarrative::build($reportData, $request->user());
 
         $notes = [
+            'Prepared by: ' . $report['preparedBy'] . ($report['preparedRole'] ? ' (' . $report['preparedRole'] . ')' : '') . ' · Date prepared: ' . $report['datePrepared'],
             'Stock as of ' . now()->format('M d, Y h:i A'),
             'Received / Sold / Adjusted for ' . $periodLabel,
         ];
         if ($onlyAttention) {
             $notes[] = 'Showing low / out-of-stock items only';
         }
-
-        $attention = $variants->filter(fn ($v) => $v->isOutOfStock() || $v->isLowStock())->take(5)
-            ->map(fn ($v) => $v->product->name . ' (' . $v->label . ')')->implode(', ');
 
         $data = [
             'title'    => 'Inventory Report',
@@ -78,20 +81,18 @@ class InventoryReportController extends Controller
                 'adjusted' => $periodAdjusted,
                 'value'    => $totalValue,
             ]],
+            'explanation' => ['heading' => 'Summary and Explanation', 'lines' => $report['summary']],
+            'charts'      => [
+                ['title' => 'Stock status of items', 'type' => 'share', 'rows' => $report['status'], 'explain' => $report['statusExplain']],
+                ['title' => 'Top products by stock value', 'type' => 'share', 'rows' => $report['topProducts'], 'explain' => $report['valueExplain']],
+            ],
+            'conclusion'  => $report['conclusion'],
+            'signatures'  => ['Prepared by: ' . $report['preparedBy'], 'Approved by (Owner): name and signature'],
             'footnote'    => null,
             'orientation' => 'landscape',
-            'analysis' => [
-                'As of ' . now()->format('M d, Y h:i A') . ', the store has ' . number_format($totalUnits) . ' unit(s) on hand with a stock value of ₱'
-                    . number_format($totalValue, 2) . '. ' . $lowCount . ' item(s) are low on stock and ' . $outCount . ' are out of stock.',
-                'For ' . $periodLabel . ', ' . $periodReceived . ' unit(s) were received, ' . $periodSold . ' were sold, and stock counts adjusted the quantity by '
-                    . $periodAdjusted . ' unit(s).',
-            ],
-            'conclusion' => ($lowCount + $outCount) > 0
-                ? 'Items needing attention include: ' . $attention . '. The Owner should consider reordering them.'
-                : 'All items are above their low-stock levels; no restocking is needed at this time.',
         ];
 
-        return TableExport::download($data, 'pdf');
+        return TableExport::download($data, $request->query('format') === 'pdf' ? 'pdf' : 'xlsx');
     }
 
     /** Everything the Inventory Report needs, worked out from the period and switch in the link. */

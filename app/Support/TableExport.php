@@ -3,9 +3,17 @@
 namespace App\Support;
 
 use Barryvdh\DomPDF\Facade\Pdf;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 /**
- * One layout for every export (Sales Records, Sales Report, Inventory Report), as a PDF.
+ * One layout for every export (Sales Records, Sales Report, Inventory Report), as PDF or Excel.
  *
  * $d = [
  *   'title'       => 'Inventory Report',
@@ -18,6 +26,11 @@ use Barryvdh\DomPDF\Facade\Pdf;
  *   'totals'      => ['label' => 'Total', 'values' => ['quantity' => 450]],   // or null
  *   'footnote'    => 'text',                                  // or null
  *   'orientation' => 'landscape' | 'portrait',
+ *   'explanation' => ['heading' => 'Summary and Explanation', 'lines' => ['...']],   // optional, shown under the summary
+ *   'charts'      => [['title' => '..', 'type' => 'bars', 'labels' => [], 'values' => [], 'explain' => '..'],
+ *                     ['title' => '..', 'type' => 'share', 'rows' => [['label','total','count','pct']], 'explain' => '..']],   // PDF only
+ *   'conclusion'  => 'text',                                  // optional
+ *   'signatures'  => ['Prepared by: ..', 'Approved by: ..'],  // optional signature lines
  * ]
  *
  * Column types: text, int, dash (0 shows as a dash), signed (+/-, 0 as a dash), money, datetime.
@@ -29,10 +42,9 @@ class TableExport
     public static function download(array $d, string $format)
     {
         $d += ['subtitle' => [], 'summary' => [], 'muted' => [], 'totals' => null, 'footnote' => null, 'orientation' => 'portrait',
-               'analysis' => [], 'conclusion' => null, 'prepared_by' => auth()->user()?->name ?? ''];
+            'explanation' => null, 'charts' => [], 'conclusion' => null, 'signatures' => []];
 
-        // PDF only: an Excel file can be edited (prices, totals), which would put the reports at risk.
-        return self::pdf($d);
+        return $format === 'pdf' ? self::pdf($d) : self::xlsx($d);
     }
 
     /** Text as it prints in the PDF (same look as the screen). */
@@ -58,11 +70,220 @@ class TableExport
     {
         @set_time_limit(120);
 
-        // Only the columns meant for paper.
+        // Only the columns meant for paper (the Excel file can carry extra detail columns).
         $d['columns'] = array_values(array_filter($d['columns'], fn ($c) => $c['pdf'] ?? true));
 
         return Pdf::loadView('exports.table', ['d' => $d])
             ->setPaper('a4', $d['orientation'])
             ->download($d['filename'] . '.pdf');
+    }
+
+    // ---------------------------------------------------------------- Excel
+
+    private static function xlsx(array $d)
+    {
+        @set_time_limit(120);
+
+        $book = new Spreadsheet();
+        $book->getProperties()->setCreator('Treklite Outdoor')->setTitle($d['title']);
+        $sheet = $book->getActiveSheet();
+        $sheet->setTitle(substr(preg_replace('/[\\\\\/?*\[\]:]/', '', $d['title']), 0, 31) ?: 'Report');
+
+        $cols    = $d['columns'];
+        $colCnt  = count($cols);
+        $lastCol = Coordinate::stringFromColumnIndex($colCnt);
+        $letter  = fn (int $i) => Coordinate::stringFromColumnIndex($i + 1);
+
+        $formats = [
+            'money'    => '"₱"#,##0.00',
+            'int'      => '#,##0',
+            'dash'     => '#,##0;-#,##0;"–"',
+            'signed'   => '+#,##0;-#,##0;"–"',
+            'datetime' => 'mmm dd, yyyy h:mm AM/PM',
+        ];
+
+        // Title + small grey lines
+        $r = 1;
+        $sheet->setCellValueExplicit("A{$r}", 'Treklite Outdoor — ' . $d['title'], DataType::TYPE_STRING);
+        $sheet->getStyle("A{$r}")->getFont()->setBold(true)->setSize(14);
+        foreach ($d['subtitle'] as $line) {
+            $r++;
+            $sheet->setCellValueExplicit("A{$r}", (string) $line, DataType::TYPE_STRING);
+            $sheet->getStyle("A{$r}")->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FF6B7A72'));
+        }
+        $r++;
+        $sheet->setCellValueExplicit("A{$r}", 'Generated ' . now()->format('M d, Y h:i A'), DataType::TYPE_STRING);
+        $sheet->getStyle("A{$r}")->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FF6B7A72'));
+
+        // Summary block: label (columns A:B merged) and value (column C)
+        if (! empty($d['summary']) && $colCnt >= 3) {
+            $r++;
+            foreach ($d['summary'] as [$label, $value, $type]) {
+                $r++;
+                $sheet->mergeCells("A{$r}:B{$r}");
+                $sheet->setCellValueExplicit("A{$r}", (string) $label, DataType::TYPE_STRING);
+                $sheet->getStyle("A{$r}")->getFont()->setBold(true);
+                if (is_numeric($value)) {
+                    $sheet->setCellValueExplicit("C{$r}", (float) $value, DataType::TYPE_NUMERIC);
+                    if (isset($formats[$type])) {
+                        $sheet->getStyle("C{$r}")->getNumberFormat()->setFormatCode($formats[$type]);
+                    }
+                } else {
+                    $sheet->setCellValueExplicit("C{$r}", (string) $value, DataType::TYPE_STRING);
+                }
+                $sheet->getStyle("C{$r}")->getAlignment()->setHorizontal('left');
+            }
+        }
+
+        // Explanation lines (same words as the printed report)
+        if (! empty($d['explanation']['lines'])) {
+            $r += 2;
+            $sheet->setCellValueExplicit("A{$r}", (string) $d['explanation']['heading'], DataType::TYPE_STRING);
+            $sheet->getStyle("A{$r}")->getFont()->setBold(true);
+            foreach ($d['explanation']['lines'] as $line) {
+                $r++;
+                $sheet->mergeCells("A{$r}:{$lastCol}{$r}");
+                $sheet->setCellValueExplicit("A{$r}", (string) $line, DataType::TYPE_STRING);
+                $sheet->getStyle("A{$r}")->getAlignment()->setWrapText(true)->setVertical('top');
+                $sheet->getRowDimension($r)->setRowHeight(30);
+            }
+        }
+
+        // Table header
+        $r += 2;
+        $headRow = $r;
+        foreach ($cols as $i => $col) {
+            $sheet->setCellValueExplicit($letter($i) . $r, $col['label'], DataType::TYPE_STRING);
+            $sheet->getColumnDimension($letter($i))->setWidth($col['width'] ?? 15);
+        }
+        $head = $sheet->getStyle("A{$r}:{$lastCol}{$r}");
+        $head->getFont()->setBold(true)->getColor()->setRGB('FFFFFF');
+        $head->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB(self::GREEN);
+        $head->getAlignment()->setVertical('center')->setWrapText(true);
+        $sheet->getRowDimension($r)->setRowHeight(22);
+        foreach ($cols as $i => $col) {
+            $sheet->getStyle($letter($i) . $r)->getAlignment()->setHorizontal($col['align'] ?? 'left');
+        }
+
+        // Rows (text is always stored as plain text, so a cell like "=1+1" can never run as a formula)
+        $first = $r + 1;
+        foreach ($d['rows'] as $n => $row) {
+            $r++;
+            foreach ($cols as $i => $col) {
+                $v = $row[$col['key']] ?? null;
+                if ($v === null || $v === '') {
+                    continue;
+                }
+                $type  = $col['type'] ?? 'text';
+                $coord = $letter($i) . $r;
+                if ($type === 'datetime' && $v instanceof \DateTimeInterface) {
+                    $sheet->setCellValueExplicit($coord, Date::PHPToExcel($v), DataType::TYPE_NUMERIC);
+                } elseif (isset($formats[$type]) && is_numeric($v)) {
+                    $sheet->setCellValueExplicit($coord, (float) $v, DataType::TYPE_NUMERIC);
+                } else {
+                    $sheet->setCellValueExplicit($coord, (string) $v, DataType::TYPE_STRING);
+                }
+            }
+            if (in_array($n, $d['muted'], true)) {
+                $mute = $sheet->getStyle("A{$r}:{$lastCol}{$r}")->getFont();
+                $mute->setStrikethrough(true)->getColor()->setRGB('8A948E');
+            }
+        }
+        $last = $r;
+
+        // Column look: alignment + number format over the whole column at once
+        if ($last >= $first) {
+            foreach ($cols as $i => $col) {
+                $range = $letter($i) . "{$first}:" . $letter($i) . $last;
+                $sheet->getStyle($range)->getAlignment()->setHorizontal($col['align'] ?? 'left')->setVertical('center');
+                $type = $col['type'] ?? 'text';
+                if (isset($formats[$type])) {
+                    $sheet->getStyle($range)->getNumberFormat()->setFormatCode($formats[$type]);
+                }
+            }
+        } else {
+            $r++;
+            $sheet->mergeCells("A{$r}:{$lastCol}{$r}");
+            $sheet->setCellValueExplicit("A{$r}", 'Nothing to show.', DataType::TYPE_STRING);
+            $sheet->getStyle("A{$r}")->getAlignment()->setHorizontal('center');
+            $last = $r;
+        }
+
+        // Totals row
+        if (! empty($d['totals'])) {
+            $r++;
+            $sheet->setCellValueExplicit("A{$r}", (string) $d['totals']['label'], DataType::TYPE_STRING);
+            foreach ($cols as $i => $col) {
+                $v = $d['totals']['values'][$col['key']] ?? null;
+                if ($v === null || ! is_numeric($v)) {
+                    continue;
+                }
+                $type  = $col['type'] ?? 'int';
+                $coord = $letter($i) . $r;
+                $sheet->setCellValueExplicit($coord, (float) $v, DataType::TYPE_NUMERIC);
+                if (isset($formats[$type])) {
+                    $sheet->getStyle($coord)->getNumberFormat()->setFormatCode($formats[$type]);
+                }
+                $sheet->getStyle($coord)->getAlignment()->setHorizontal($col['align'] ?? 'right');
+            }
+            $tot = $sheet->getStyle("A{$r}:{$lastCol}{$r}");
+            $tot->getFont()->setBold(true);
+            $tot->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('E6F4EA');
+            $last = $r;
+        }
+
+        // Thin grey grid around the whole table
+        $sheet->getStyle("A{$headRow}:{$lastCol}{$last}")->getBorders()->getAllBorders()
+            ->setBorderStyle(Border::BORDER_THIN)->getColor()->setRGB('D3DBD6');
+
+        if ($d['footnote']) {
+            $r += 2;
+            $sheet->setCellValueExplicit("A{$r}", (string) $d['footnote'], DataType::TYPE_STRING);
+            $sheet->getStyle("A{$r}")->getFont()->setItalic(true)->getColor()->setRGB('6B7A72');
+        }
+
+        if ($d['conclusion']) {
+            $r += 2;
+            $sheet->setCellValueExplicit("A{$r}", 'Conclusion', DataType::TYPE_STRING);
+            $sheet->getStyle("A{$r}")->getFont()->setBold(true);
+            $r++;
+            $sheet->mergeCells("A{$r}:{$lastCol}{$r}");
+            $sheet->setCellValueExplicit("A{$r}", (string) $d['conclusion'], DataType::TYPE_STRING);
+            $sheet->getStyle("A{$r}")->getAlignment()->setWrapText(true)->setVertical('top');
+            $sheet->getRowDimension($r)->setRowHeight(30);
+        }
+        if (! empty($d['signatures'])) {
+            $r += 3;
+            foreach ($d['signatures'] as $i => $line) {
+                $coord = $i === 0 ? "A{$r}" : $letter(max(0, intdiv($colCnt, 2))) . $r;
+                $sheet->setCellValueExplicit($coord, (string) $line, DataType::TYPE_STRING);
+                $sheet->getStyle($coord)->getBorders()->getTop()->setBorderStyle(Border::BORDER_THIN);
+            }
+        }
+
+        // Nice-to-have extras. If any of these is not available, the file is still delivered.
+        try {
+            if (count($d['rows']) > 0) {
+                $sheet->setAutoFilter("A{$headRow}:{$lastCol}" . ($headRow + count($d['rows'])));
+            }
+            $setup = $sheet->getPageSetup();
+            $setup->setPaperSize(PageSetup::PAPERSIZE_A4);
+            $setup->setOrientation($d['orientation'] === 'landscape' ? PageSetup::ORIENTATION_LANDSCAPE : PageSetup::ORIENTATION_PORTRAIT);
+            $setup->setFitToWidth(1);
+            $setup->setFitToHeight(0);
+            $setup->setFitToPage(true);
+            $setup->setRowsToRepeatAtTopByStartAndEnd($headRow, $headRow);
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        return response()->streamDownload(function () use ($book) {
+            $writer = new Xlsx($book);
+            $writer->setPreCalculateFormulas(false);
+            $writer->save('php://output');
+            $book->disconnectWorksheets();
+        }, $d['filename'] . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
     }
 }
