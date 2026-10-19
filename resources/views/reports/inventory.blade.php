@@ -35,12 +35,6 @@
         <div class="ph-meta">Prepared by: {{ $report['preparedBy'] }}@if ($report['preparedRole']) ({{ $report['preparedRole'] }})@endif &middot; Date prepared: {{ $report['datePrepared'] }}</div>
     </div>
 
-    <div class="report-note mb-3">
-        <div class="rn-title">Summary and Explanation</div>
-        @foreach ($report['summary'] as $line)
-            <p>{{ $line }}</p>
-        @endforeach
-    </div>
 
     <div class="d-flex justify-content-between align-items-center mb-3 d-print-none">
         <h3 class="mb-0">Inventory Report</h3>
@@ -102,6 +96,13 @@
     <div class="small text-muted mb-2">
         Stock as of {{ now()->format('M d, Y h:i A') }}
         &middot; Received / Sold / Adjusted for <strong>{{ $periodLabel }}</strong>
+    </div>
+
+    <div class="report-note mb-3">
+        <div class="rn-title">Summary and Explanation</div>
+        @foreach ($report['summary'] as $line)
+            <p>{{ $line }}</p>
+        @endforeach
     </div>
 
     <div class="row g-3 mb-3 print-row">

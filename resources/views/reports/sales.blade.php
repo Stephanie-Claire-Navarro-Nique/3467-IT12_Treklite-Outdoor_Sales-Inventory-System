@@ -47,12 +47,6 @@
     </div>
 
     {{-- Summary and explanation: always on paper, and on screen too --}}
-    <div class="report-note mb-3">
-        <div class="rn-title">Summary and Explanation</div>
-        @foreach ($report['summary'] as $line)
-            <p>{{ $line }}</p>
-        @endforeach
-    </div>
 
     <div class="d-flex justify-content-between align-items-center mb-3 d-print-none">
         <h3 class="mb-0">Sales Report</h3>
@@ -94,6 +88,13 @@
     </div>
 
     <div class="small text-muted mb-2">{{ $from->format('M d, Y') }} &ndash; {{ $to->format('M d, Y') }}</div>
+
+    <div class="report-note mb-3">
+        <div class="rn-title">Summary and Explanation</div>
+        @foreach ($report['summary'] as $line)
+            <p>{{ $line }}</p>
+        @endforeach
+    </div>
 
     <div class="row g-3 mb-3 print-row">
         <div class="col-md-4">
