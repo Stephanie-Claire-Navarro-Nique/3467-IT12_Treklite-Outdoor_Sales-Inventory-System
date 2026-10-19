@@ -21,7 +21,8 @@
 
                 .grid-page { padding: .25rem; margin: -.25rem; }
         .right-col { }
-        .cart-lines { }
+        /* The item list scrolls inside the Cart box; the header, customer/payment box and total stay in place. */
+        .cart-lines { max-height: 420px; overflow-y: auto; overscroll-behavior: contain; padding-right: .25rem; }
         .cart-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: .35rem; background: #e9edeb; flex-shrink: 0; }
         .qty-btn { width: 28px; padding: 0; }
 
