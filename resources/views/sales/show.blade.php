@@ -19,6 +19,33 @@
         .rc-pay td { padding: .12rem 0; }
         .rc-pay td:last-child { text-align: right; font-weight: 600; }
 
+        /* Phones: each item becomes a small block (name + amount, then size, then qty and price) instead of five squeezed columns */
+        @media screen and (max-width: 575.98px) {
+            .invoice .card-body { padding: 1rem !important; }
+            .invoice { font-size: 1rem; }
+            .rc-meta { grid-template-columns: 1fr; gap: .3rem; font-size: .95rem; }
+            .rc-meta .rc-right { text-align: left; }
+            .invoice .rc-items, .invoice .rc-items tbody, .invoice .rc-items tfoot { display: block; width: 100%; }
+            .invoice .rc-items thead { display: none; }
+            .invoice .rc-items tbody tr {
+                display: grid; grid-template-columns: 1fr auto auto; gap: .15rem .75rem;
+                padding: .7rem 0; border-bottom: 1px solid #dee2e6;
+            }
+            .invoice .rc-items tbody td { display: block; padding: 0; border: 0; width: auto; text-align: left; }
+            .invoice .rc-items td.c-item   { grid-column: 1 / 3; grid-row: 1; font-weight: 600; }
+            .invoice .rc-items td.c-amount { grid-column: 3; grid-row: 1; text-align: right; font-weight: 700; white-space: nowrap; }
+            .invoice .rc-items td.c-opt    { grid-column: 1 / -1; grid-row: 2; color: #6c757d; font-size: .9rem; }
+            .invoice .rc-items td.c-qty    { grid-column: 1; grid-row: 3; color: #6c757d; font-size: .9rem; text-align: left; }
+            .invoice .rc-items td.c-price  { grid-column: 2 / 4; grid-row: 3; color: #6c757d; font-size: .9rem; text-align: right; white-space: nowrap; }
+            .invoice .rc-items td.c-qty::before { content: "Qty "; }
+            .invoice .rc-items td.c-price::before { content: "@ "; }
+            .invoice .rc-items tfoot tr { display: flex; justify-content: space-between; align-items: baseline; padding: .8rem 0 .2rem; }
+            .invoice .rc-items tfoot th { display: block; border: 0; padding: 0; width: auto; font-size: 1.1rem; }
+            .rc-pay { max-width: 100%; font-size: 1rem; }
+            .rc-pay td { padding: .25rem 0; }
+        }
+
+
         @media print {
             /* A margin of 0 on the page also removes the browser's own date / title / web address lines; the padding below gives the paper margin. */
             @page { size: A4 portrait; margin: 0; }
@@ -87,8 +114,8 @@
                     @foreach ($sale->items as $item)
                         <tr>
                             <td class="c-item">{{ $item->variant->product->name }}</td>
-                            <td class="c-opt">{{ $item->variant->label }}</td>
-                            <td class="c-qty">{{ $item->quantity }}</td>
+                            <td class="c-opt" data-label="Size / Color">{{ $item->variant->label }}</td>
+                            <td class="c-qty" data-label="Qty">{{ $item->quantity }}</td>
                             <td class="c-price">₱{{ number_format($item->unit_price, 2) }}</td>
                             <td class="c-amount">₱{{ number_format($item->subtotal, 2) }}</td>
                         </tr>

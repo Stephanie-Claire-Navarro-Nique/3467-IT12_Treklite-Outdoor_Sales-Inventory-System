@@ -279,10 +279,13 @@
             .modal-dialog { margin: .5rem; }
 
             /* Dashboard lists: long names wrap instead of pushing the amount off-screen */
-            .list-group-item.d-flex { gap: .5rem; word-break: break-word; }
+            .list-group-item.d-flex { gap: .75rem; align-items: flex-start; }
+            .list-group-item.d-flex > :first-child { min-width: 0; overflow-wrap: anywhere; }
+            .list-group-item.d-flex > :last-child { white-space: nowrap; flex-shrink: 0; text-align: right; }
 
-            /* Filter bars: date fields and buttons fill the row */
-            input[type=date] { width: 100% !important; }
+            /* Nothing may push the page wider than the screen */
+            body { overflow-x: hidden; }
+            .main-wrapper { min-width: 0; max-width: 100%; }
         }
 
 
@@ -308,6 +311,10 @@
                 content: attr(data-label); flex: 0 0 36%; max-width: 36%; text-align: left;
                 font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: #66756c;
             }
+            .table-stack td.text-end .cell-v, .table-stack td.fw-bold .cell-v { white-space: nowrap; }
+            .table-stack .cell-v { flex: 1 1 auto; min-width: 0; text-align: right; overflow-wrap: anywhere; }
+            .table-stack .cell-v > .d-flex { justify-content: flex-end; }
+            .table-stack tbody tr > td[data-label=""] .cell-v { text-align: left; }
             .table-stack tbody tr > td[data-label=""]::before { display: none; }
             .table-stack tbody tr > td[data-label=""] { justify-content: flex-start; }
             .table-stack tbody tr > td[colspan] { display: block; text-align: center !important; }
@@ -443,20 +450,37 @@
     backdrop?.addEventListener('click', toggleSidebar);
 </script>
 <script>
-    // Phones: give every table cell its column name so the stacked card rows can show it.
-    document.querySelectorAll('table.table').forEach(t => {
-        if (t.matches('.rc-items, .rc-pay, #variants-table') || !t.tHead) return;
-        const heads = [...t.tHead.rows[t.tHead.rows.length - 1].cells].map(th => th.textContent.trim());
-        t.classList.add('table-stack');
-        t.tBodies[0] && [...t.tBodies[0].rows].forEach(tr => {
-            let i = 0;
-            [...tr.cells].forEach(td => {
-                if (td.colSpan > 1) { i += td.colSpan; return; }
-                td.setAttribute('data-label', heads[i] || '');
-                i++;
+    // Phones only: give every table cell its column name so the stacked card rows can show it.
+    // (On laptop / desktop screens this does nothing, so those pages stay exactly as they were.)
+    (function () {
+        const mq = window.matchMedia('(max-width: 575.98px)');
+        let done = false;
+        function labelTables() {
+            if (done || !mq.matches) return;
+            done = true;
+            document.querySelectorAll('table.table').forEach(t => {
+                if (t.matches('.rc-items, .rc-pay, #variants-table') || !t.tHead) return;
+                const heads = [...t.tHead.rows[t.tHead.rows.length - 1].cells].map(th => th.textContent.trim());
+                t.classList.add('table-stack');
+                t.tBodies[0] && [...t.tBodies[0].rows].forEach(tr => {
+                    let i = 0;
+                    [...tr.cells].forEach(td => {
+                        if (td.colSpan > 1) { i += td.colSpan; return; }
+                        td.setAttribute('data-label', heads[i] || '');
+                        if (td.childNodes.length) {
+                            const v = document.createElement('div');
+                            v.className = 'cell-v';
+                            while (td.firstChild) v.appendChild(td.firstChild);
+                            td.appendChild(v);
+                        }
+                        i++;
+                    });
+                });
             });
-        });
-    });
+        }
+        labelTables();
+        mq.addEventListener ? mq.addEventListener('change', labelTables) : mq.addListener(labelTables);
+    })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>

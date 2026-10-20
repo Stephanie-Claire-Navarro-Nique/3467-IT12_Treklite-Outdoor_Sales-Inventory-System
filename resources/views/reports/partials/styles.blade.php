@@ -43,6 +43,19 @@
     .filter-bar .range-sep { color: #9aa7a0; }
     .filter-label { font-size: .75rem; font-weight: 600; color: #6b7a72; text-transform: uppercase; letter-spacing: .04em; }
     @media (max-width: 768px) { .filter-divider { display: none; } }
+    @media (max-width: 575.98px) {
+        .filter-bar { padding: .75rem; gap: .75rem; }
+        .filter-bar .filter-group { flex-wrap: wrap; width: 100%; }
+        .filter-bar .btn-group { width: 100%; }
+        .filter-bar .btn-group .btn { flex: 1 1 0; min-width: 0; padding: .45rem .25rem; font-size: .95rem; }
+        .filter-bar .range-field { flex: 1 1 100%; }
+        .filter-bar .range-field label { min-width: 2.6rem; font-size: .85rem; }
+        .filter-bar input[type=date] { flex: 1 1 auto; width: 100%; min-width: 0; }
+        .filter-bar .range-sep { display: none; }
+        .filter-bar form .btn-icon { width: 100%; }
+        .report-note p { font-size: .95rem; }
+        .report-note .rn-title { font-size: 1rem; }
+    }
 
     /* ---------- Printing: same clean layout on both reports ---------- */
     @media print {

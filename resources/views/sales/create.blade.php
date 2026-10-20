@@ -38,15 +38,16 @@
             .mobile-cart-bar {
                 display: flex; align-items: center; justify-content: space-between; gap: .75rem;
                 position: fixed; left: 0; right: 0; bottom: 0; z-index: 1025;
-                padding: .6rem .9rem calc(.6rem + env(safe-area-inset-bottom, 0px));
+                padding: .65rem .9rem calc(1.6rem + env(safe-area-inset-bottom, 0px));
                 background: #fff; border-top: 1px solid #d5dbd8; box-shadow: 0 -.25rem .75rem rgba(0,0,0,.08);
             }
-            .has-cart-bar { padding-bottom: 5rem; }
+            .has-cart-bar { padding-bottom: 8rem; }
             .cart-lines { max-height: 320px; }
         }
         @media (max-width: 575.98px) {
             .product-card .card-body { padding: .5rem !important; }
-            .opt-lines { min-height: 2.4em; }
+            .opt-lines { min-height: 0; }
+            .name-clamp { min-height: 0; }
         }
     </style>
 
