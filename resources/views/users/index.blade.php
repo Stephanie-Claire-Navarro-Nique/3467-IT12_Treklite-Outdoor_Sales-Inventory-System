@@ -10,7 +10,7 @@
 
     <div data-ctable data-per-page="10">
     <div class="card shadow-sm">
-        <table class="table mb-0 align-middle">
+        <div class="table-responsive"><table class="table mb-0 align-middle">
             <thead>
                 <tr>
                     <th>Name</th>
@@ -47,7 +47,7 @@
                     <tr><td colspan="5" class="text-center text-muted py-4">No staff accounts yet. Press the <i class="bi bi-person-plus"></i> icon above to create one.</td></tr>
                 @endforelse
             </tbody>
-        </table>
+        </table></div>
     </div>
     <div data-pager></div>
     </div>

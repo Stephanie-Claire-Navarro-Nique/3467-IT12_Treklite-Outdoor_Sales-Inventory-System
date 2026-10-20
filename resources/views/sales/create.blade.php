@@ -31,11 +31,28 @@
         .variant-chip { min-width: 64px; }
         .variant-chip:disabled { text-decoration: line-through; opacity: .45; }
         .qty-input { width: 60px; text-align: center; }
+
+        /* Phone only: a bar pinned to the bottom shows the cart count + total and jumps to the cart / payment boxes */
+        .mobile-cart-bar { display: none; }
+        @media (max-width: 991.98px) {
+            .mobile-cart-bar {
+                display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+                position: fixed; left: 0; right: 0; bottom: 0; z-index: 1025;
+                padding: .6rem .9rem calc(.6rem + env(safe-area-inset-bottom, 0px));
+                background: #fff; border-top: 1px solid #d5dbd8; box-shadow: 0 -.25rem .75rem rgba(0,0,0,.08);
+            }
+            .has-cart-bar { padding-bottom: 5rem; }
+            .cart-lines { max-height: 320px; }
+        }
+        @media (max-width: 575.98px) {
+            .product-card .card-body { padding: .5rem !important; }
+            .opt-lines { min-height: 2.4em; }
+        }
     </style>
 
     <h3 class="mb-3">New Sale</h3>
 
-    <div class="row g-3">
+    <div class="row g-3 has-cart-bar">
         {{-- ============ MIDDLE: product grid ============ --}}
         <div class="col-lg-8">
             <div class="input-group mb-2">
@@ -139,6 +156,15 @@
         </div>
     </div>
 
+    {{-- Phone only: always-visible cart summary --}}
+    <div class="mobile-cart-bar" id="mobile-cart-bar">
+        <div class="lh-sm">
+            <div class="small text-muted"><i class="bi bi-cart3"></i> <span id="mcb-count">0</span> item(s)</div>
+            <div class="fw-bold fs-5" id="mcb-total">₱0.00</div>
+        </div>
+        <button type="button" class="btn btn-success" id="mcb-go"><i class="bi bi-arrow-down-circle"></i> Cart &amp; payment</button>
+    </div>
+
     {{-- Variant picker: Size row + Color row --}}
     <div class="modal fade" id="variant-modal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
@@ -183,6 +209,19 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+
+            // Phone cart bar: mirror the cart count and total, and jump to the cart box
+            (function () {
+                const cnt = document.getElementById('cart-count'), tot = document.getElementById('total-display');
+                const mc = document.getElementById('mcb-count'), mt = document.getElementById('mcb-total');
+                const sync = () => { mc.textContent = cnt.textContent; mt.textContent = tot.textContent; };
+                const obs = new MutationObserver(sync);
+                [cnt, tot].forEach(el => obs.observe(el, { childList: true, characterData: true, subtree: true }));
+                sync();
+                document.getElementById('mcb-go').addEventListener('click', () => {
+                    document.getElementById('sale-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            })();
             const PRODUCTS  = @json($products);
             const OLD_ITEMS = @json(old('items', []));
 

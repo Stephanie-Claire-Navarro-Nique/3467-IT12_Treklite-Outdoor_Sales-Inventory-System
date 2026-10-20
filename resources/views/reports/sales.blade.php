@@ -155,7 +155,7 @@
     {{-- Shown 10 per page on screen; the printed report always has every row. --}}
     <div data-ctable data-per-page="10">
     <div class="card shadow-sm">
-        <table class="table mb-0">
+        <div class="table-responsive"><table class="table mb-0">
             <thead>
                 <tr>
                     <th>Invoice #</th>
@@ -180,7 +180,7 @@
                     <tr><td colspan="6" class="text-center text-muted py-4">No sales in this range.</td></tr>
                 @endforelse
             </tbody>
-        </table>
+        </table></div>
     </div>
     <div data-pager class="no-print"></div>
     </div>

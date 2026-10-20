@@ -28,7 +28,7 @@
             <div class="card shadow-sm">
                 <div class="card-header fw-bold">Saved backups on the server</div>
                 <div data-ctable data-per-page="10" data-compact>
-                <table class="table mb-0 align-middle">
+                <div class="table-responsive"><table class="table mb-0 align-middle">
                     <thead><tr><th>File</th><th>Created</th><th class="text-end">Size</th><th class="text-center" style="width:110px">Action</th></tr></thead>
                     <tbody>
                         @forelse ($backups as $b)
@@ -42,7 +42,7 @@
                             <tr><td colspan="4" class="text-center text-muted py-4">No backups yet.</td></tr>
                         @endforelse
                     </tbody>
-                </table>
+                </table></div>
                 <div data-pager class="px-2 pb-2"></div>
                 </div>
             </div>

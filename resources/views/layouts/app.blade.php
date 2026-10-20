@@ -247,6 +247,43 @@
             [data-pager], .ct-pager { display: none !important; }
         }
 
+
+        /* ===== Phones (under 768px): compact, thumb-friendly arrangement ===== */
+        @media (max-width: 767.98px) {
+            /* Menu button stays reachable while scrolling */
+            .topbar { position: sticky; top: 0; z-index: 1020; padding: .5rem .75rem; }
+            .sidebar { width: min(82vw, 280px); }
+
+            h3 { font-size: 1.3rem; }
+            h6 { font-size: .8rem; }
+
+            /* Page heading + its icon buttons: wrap instead of squeezing */
+            .container-fluid > .d-flex.justify-content-between { flex-wrap: wrap; gap: .5rem; }
+
+            /* 16px fields so iPhones do not zoom in when a field is tapped */
+            .form-control, .form-select, .form-control-sm, .form-select-sm { font-size: 16px; }
+
+            /* Tables: tighter cells, text stays on one line and the table scrolls sideways inside its card */
+            .table-responsive { -webkit-overflow-scrolling: touch; }
+            .table > :not(caption) > * > * { padding: .45rem .5rem; }
+            .table-responsive .table { font-size: .85rem; white-space: nowrap; }
+
+            /* Paging footer: stacked and centred */
+            .ct-pager { justify-content: center; text-align: center; }
+
+            /* Cards and panels: less padding */
+            .card-body { padding: .75rem; }
+
+            /* Modals use the full width with small gaps */
+            .modal-dialog { margin: .5rem; }
+
+            /* Dashboard lists: long names wrap instead of pushing the amount off-screen */
+            .list-group-item.d-flex { gap: .5rem; word-break: break-word; }
+
+            /* Filter bars: date fields and buttons fill the row */
+            input[type=date] { width: 100% !important; }
+        }
+
         @keyframes toggle-in {
             from { opacity: 0; transform: translateX(-8px); }
             to   { opacity: 1; transform: translateX(0); }
@@ -333,7 +370,7 @@
         <span class="fw-semibold">Treklite Outdoor</span>
     </div>
 
-    <div class="container-fluid py-4 px-4">
+    <div class="container-fluid py-3 py-md-4 px-2 px-sm-3 px-md-4">
         @if (session('status'))
             <div class="alert alert-success">{{ session('status') }}</div>
         @endif
