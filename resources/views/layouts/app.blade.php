@@ -265,8 +265,9 @@
 
             /* Tables: tighter cells, text stays on one line and the table scrolls sideways inside its card */
             .table-responsive { -webkit-overflow-scrolling: touch; }
-            .table > :not(caption) > * > * { padding: .45rem .5rem; }
-            .table-responsive .table { font-size: .85rem; white-space: nowrap; }
+            .table > :not(caption) > * > * { padding: .6rem .65rem; }
+            .table-responsive .table { font-size: .9rem; white-space: nowrap; }
+            .fs-4 { font-size: 1.4rem !important; }
 
             /* Paging footer: stacked and centred */
             .ct-pager { justify-content: center; text-align: center; }
@@ -282,6 +283,38 @@
 
             /* Filter bars: date fields and buttons fill the row */
             input[type=date] { width: 100% !important; }
+        }
+
+
+        /* ===== Small phones (under 576px): each table row becomes a readable card (label on the left, value on the right) ===== */
+        @media screen and (max-width: 575.98px) {
+            .card > .table-stack, .table-responsive > .table-stack { margin-bottom: 0; }
+            .table-stack, .table-stack tbody { display: block; width: 100%; }
+            .table-stack thead { display: none; }
+            .table-responsive .table-stack { white-space: normal; font-size: .95rem; }
+            .table-stack tbody tr {
+                display: block; margin: .6rem; padding: .35rem .85rem;
+                border: 1px solid #dfe5e1; border-radius: .7rem; background: #fff;
+                box-shadow: 0 1px 2px rgba(0,0,0,.04);
+            }
+            .table-stack tbody tr > td {
+                display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+                padding: .45rem 0 !important; border: 0; border-bottom: 1px dashed #e6ebe8;
+                text-align: right !important; box-shadow: none !important; background: transparent !important;
+                white-space: normal; word-break: break-word; width: auto !important;
+            }
+            .table-stack tbody tr > td:last-child { border-bottom: 0; }
+            .table-stack tbody tr > td::before {
+                content: attr(data-label); flex: 0 0 36%; max-width: 36%; text-align: left;
+                font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: #66756c;
+            }
+            .table-stack tbody tr > td[data-label=""]::before { display: none; }
+            .table-stack tbody tr > td[data-label=""] { justify-content: flex-start; }
+            .table-stack tbody tr > td[colspan] { display: block; text-align: center !important; }
+            .table-stack tbody tr > td[colspan]::before { display: none; }
+            .table-stack tbody tr > td.text-center > .d-flex, .table-stack tbody tr > td .btn-group { justify-content: flex-end; }
+            /* the rows are cards now, so the card around the table needs no frame of its own */
+            .card:has(> .table-stack), .card:has(> .table-responsive > .table-stack) { background: transparent; border: 0 !important; box-shadow: none !important; }
         }
 
         @keyframes toggle-in {
@@ -408,6 +441,22 @@
 
     toggleBtns.forEach(btn => btn.addEventListener('click', toggleSidebar));
     backdrop?.addEventListener('click', toggleSidebar);
+</script>
+<script>
+    // Phones: give every table cell its column name so the stacked card rows can show it.
+    document.querySelectorAll('table.table').forEach(t => {
+        if (t.matches('.rc-items, .rc-pay, #variants-table') || !t.tHead) return;
+        const heads = [...t.tHead.rows[t.tHead.rows.length - 1].cells].map(th => th.textContent.trim());
+        t.classList.add('table-stack');
+        t.tBodies[0] && [...t.tBodies[0].rows].forEach(tr => {
+            let i = 0;
+            [...tr.cells].forEach(td => {
+                if (td.colSpan > 1) { i += td.colSpan; return; }
+                td.setAttribute('data-label', heads[i] || '');
+                i++;
+            });
+        });
+    });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>

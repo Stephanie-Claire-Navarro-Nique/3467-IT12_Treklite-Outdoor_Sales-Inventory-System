@@ -127,6 +127,36 @@
         @media (max-width: 560px) {
             .features { grid-template-columns: 1fr; }
         }
+        /* ---------- Phones: roomy, easy-to-read sign-in ---------- */
+        @media (max-width: 575.98px) {
+            html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+            .panel { padding: 28px 18px 20px; }
+            .card { max-width: 100%; }
+            .mobile-brand { margin-bottom: 26px; }
+            .mobile-brand .brand-name { font-size: 1.3rem; }
+            .mobile-brand .brand-sub { font-size: .8rem; }
+            .mobile-brand .brand-mark { width: 50px; height: 50px; }
+            .card h2 { font-size: 2rem; }
+            .card .sub { font-size: 1.02rem; margin-bottom: 26px; }
+            .field { margin-bottom: 20px; }
+            .field label { font-size: 1rem; margin-bottom: 8px; }
+            .input input { height: 54px; font-size: 16px; padding: 0 48px 0 46px; }
+            .input .lead-ico { left: 16px; font-size: 1.15rem; }
+            .toggle { width: 42px; height: 42px; font-size: 1.25rem; }
+            .row { font-size: 1rem; flex-wrap: wrap; gap: 10px; }
+            .check input { width: 20px; height: 20px; }
+            .btn { height: 56px; font-size: 1.1rem; }
+            .help { font-size: .95rem; }
+            .alert { font-size: .98rem; }
+            /* the long feature list is for desktop; on a phone keep the sign-in short */
+            .hero { padding: 28px 20px 0; }
+            .hero h1 { font-size: 1.6rem; }
+            .lead { font-size: 1rem; }
+            .features { display: none; }
+            .roles { margin-top: 4px; }
+            .role { font-size: .9rem; }
+            .mountains { margin: 22px -20px 0; }
+        }
     </style>
 </head>
 <body>
